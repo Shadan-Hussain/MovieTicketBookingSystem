@@ -1,15 +1,15 @@
 package com.example.MovieTicketBookingSystemBackend.dto;
 
-public class MessageResponse {
+public class RedirectResponse {
 
     private String message;
     private String sessionId;
 
-    public MessageResponse(String message) {
+    public RedirectResponse(String message) {
         this.message = message;
     }
 
-    public MessageResponse(String message, String sessionId) {
+    public RedirectResponse(String message, String sessionId) {
         this.message = message;
         this.sessionId = sessionId;
     }

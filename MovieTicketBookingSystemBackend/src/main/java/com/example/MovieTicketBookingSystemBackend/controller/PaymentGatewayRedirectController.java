@@ -1,6 +1,6 @@
 package com.example.MovieTicketBookingSystemBackend.controller;
 
-import com.example.MovieTicketBookingSystemBackend.dto.MessageResponse;
+import com.example.MovieTicketBookingSystemBackend.dto.RedirectResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,14 +22,14 @@ public class PaymentGatewayRedirectController {
      * we receive is GET /redirect/success?session_id=cs_xxxxx — i.e. session_id comes from the query string.
      */
     @GetMapping("/success")
-    public ResponseEntity<MessageResponse> paymentSuccess(
+    public ResponseEntity<RedirectResponse> paymentSuccess(
             @RequestParam(value = "session_id", required = false) String sessionId) {
-        return ResponseEntity.ok(new MessageResponse("Payment succeeded", sessionId));
+        return ResponseEntity.ok(new RedirectResponse("Payment succeeded", sessionId));
     }
 
     /** Stripe redirects here when the customer cancels or leaves Checkout. */
     @GetMapping("/cancel")
-    public ResponseEntity<MessageResponse> paymentCancel() {
-        return ResponseEntity.ok(new MessageResponse("Payment cancelled"));
+    public ResponseEntity<RedirectResponse> paymentCancel() {
+        return ResponseEntity.ok(new RedirectResponse("Payment cancelled"));
     }
 }
