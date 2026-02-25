@@ -19,39 +19,41 @@ public class SeatLockService {
         this.redisTemplate = redisTemplate;
     }
 
-    private static String seatLockKey(Long seatId) {
-        return "seat:lock:" + seatId;
+    /** Lock key for (showId, seatId) — used for single-seat booking flow. */
+    private static String seatLockKey(Long showId, Long seatId) {
+        return "seat:lock:" + showId + ":" + seatId;
     }
 
-    private static String ticketLockKey(Long seatId) {
-        return "ticket:lock:" + seatId;
+    /** Idempotency key for webhook: one ticket per Stripe session. */
+    private static String ticketLockKey(String stripeSessionId) {
+        return "ticket:lock:" + stripeSessionId;
     }
 
-    /** Returns true if the seat is currently locked (key exists and TTL not expired). */
-    public boolean isLocked(Long seatId) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(seatLockKey(seatId)));
+    /** Returns true if the seat for this show is currently locked. */
+    public boolean isLocked(Long showId, Long seatId) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(seatLockKey(showId, seatId)));
     }
 
     /**
-     * Sets seat lock only if key does not exist (atomic). Value is "locked".
-     * @return true if lock was set, false if key already existed (someone else locked it)
+     * Sets seat lock only if key does not exist (atomic).
+     * @return true if lock was set, false if key already existed
      */
-    public boolean setLockIfAbsent(Long seatId) {
+    public boolean setLockIfAbsent(Long showId, Long seatId) {
         return Boolean.TRUE.equals(
-                redisTemplate.opsForValue().setIfAbsent(seatLockKey(seatId), LOCK_VALUE, SEAT_LOCK_TTL));
+                redisTemplate.opsForValue().setIfAbsent(seatLockKey(showId, seatId), LOCK_VALUE, SEAT_LOCK_TTL));
     }
 
     /** Removes the seat lock (e.g. after payment success or failure). */
-    public void removeLock(Long seatId) {
-        redisTemplate.delete(seatLockKey(seatId));
+    public void removeLock(Long showId, Long seatId) {
+        redisTemplate.delete(seatLockKey(showId, seatId));
     }
 
     /**
-     * Sets ticket lock only if key does not exist (atomic). Used for idempotent payment-success handling.
-     * @return true if lock was set (this request should create the ticket), false if already set (duplicate webhook → skip)
+     * Sets ticket lock by session ID for idempotent webhook handling.
+     * @return true if this request should create the ticket, false if duplicate webhook
      */
-    public boolean setTicketLockIfAbsent(Long seatId) {
+    public boolean setTicketLockIfAbsent(String stripeSessionId) {
         return Boolean.TRUE.equals(
-                redisTemplate.opsForValue().setIfAbsent(ticketLockKey(seatId), LOCK_VALUE, TICKET_LOCK_TTL));
+                redisTemplate.opsForValue().setIfAbsent(ticketLockKey(stripeSessionId), LOCK_VALUE, TICKET_LOCK_TTL));
     }
 }
