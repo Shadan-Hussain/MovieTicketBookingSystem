@@ -2,6 +2,7 @@ package com.example.MovieTicketBookingSystemBackend.service;
 
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
+import com.stripe.model.PaymentIntent;
 import com.stripe.model.StripeObject;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
@@ -14,15 +15,16 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Processes Stripe webhook payloads: signature verification, event deserialization, and dispatch.
- * Delegates payment success handling to StripeService.
+ * Delegates payment success/failure handling to StripeService.
  */
 @Service
 public class StripeWebhookService {
 
     private static final Logger log = LoggerFactory.getLogger(StripeWebhookService.class);
     private static final String EVENT_CHECKOUT_SESSION_COMPLETED = "checkout.session.completed";
+    private static final String EVENT_PAYMENT_INTENT_PAYMENT_FAILED = "payment_intent.payment_failed";
 
-    @Value("${stripe.webhookSecret}")
+    @Value("${STRIPE_WEBHOOK_SECRET:}")
     private String webhookSecret;
 
     private final StripeService stripeService;
@@ -45,8 +47,6 @@ public class StripeWebhookService {
             return "Missing signature or config";
         }
 
-        // Single conversion from raw bytes to string — same as Stripe's recommendation (e.g. getContent() in PHP).
-        // Any prior decode/re-encode can change whitespace and invalidate the signature.
         String payload = new String(rawPayload, StandardCharsets.UTF_8);
 
         Event event;
@@ -60,6 +60,11 @@ public class StripeWebhookService {
 
         if (EVENT_CHECKOUT_SESSION_COMPLETED.equals(event.getType())) {
             String err = processCheckoutSessionCompleted(event);
+            if (err != null) {
+                return err;
+            }
+        } else if (EVENT_PAYMENT_INTENT_PAYMENT_FAILED.equals(event.getType())) {
+            String err = processPaymentIntentFailed(event);
             if (err != null) {
                 return err;
             }
@@ -88,6 +93,40 @@ public class StripeWebhookService {
         }
 
         stripeService.handlePaymentSuccess(session.getId());
+        return null;
+    }
+
+    private String processPaymentIntentFailed(Event event) {
+        var deserializer = event.getDataObjectDeserializer();
+        PaymentIntent paymentIntent = null;
+        if (deserializer.getObject().isPresent()) {
+            StripeObject obj = deserializer.getObject().get();
+            if (obj instanceof PaymentIntent) {
+                paymentIntent = (PaymentIntent) obj;
+            }
+        }
+        if (paymentIntent == null) {
+            try {
+                StripeObject obj = deserializer.deserializeUnsafe();
+                if (obj instanceof PaymentIntent) {
+                    paymentIntent = (PaymentIntent) obj;
+                }
+            } catch (Exception e) {
+                log.error("Failed to deserialize payment intent from event: {}", e.getMessage());
+            }
+        }
+        if (paymentIntent == null) {
+            log.error("Event data object is not a payment intent for type {}", event.getType());
+            return "Invalid payment intent in event";
+        }
+
+        String paymentIntentId = paymentIntent.getId();
+        if (paymentIntentId == null || paymentIntentId.isEmpty()) {
+            log.error("payment_intent.payment_failed event without id");
+            return "Missing payment_intent id";
+        }
+
+        stripeService.handlePaymentFailure(paymentIntentId);
         return null;
     }
 

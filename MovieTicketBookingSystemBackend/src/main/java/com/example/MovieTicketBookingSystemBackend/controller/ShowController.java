@@ -16,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 @RestController
@@ -69,11 +71,25 @@ public class ShowController {
         if (!seatLockService.isLocked(showId, seatId)) {
             throw new ResponseStatusException(HttpStatus.GONE, "Lock expired; please lock the seat again");
         }
-        if (transactionRepository.existsByShowIdAndSeatIdAndStatusIn(showId, seatId,
-                List.of(Transaction.STATUS_PENDING, Transaction.STATUS_SUCCESS))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "A pending or successful transaction already exists for this show and seat");
-        }
+        transactionRepository.findFirstByShowIdAndSeatIdOrderByCreatedAtDesc(showId, seatId)
+                .ifPresent(txn -> {
+                    if (Transaction.STATUS_SUCCESS.equals(txn.getStatus())) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                                "A successful transaction already exists for this show and seat");
+                    }
+                    if (Transaction.STATUS_PENDING.equals(txn.getStatus())) {
+                        Instant created = txn.getCreatedAt();
+                        Instant now = Instant.now();
+                        if (created != null && Duration.between(created, now).toMinutes() < 10) {
+                            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                                    "A recent pending transaction exists for this show and seat; please wait a few minutes");
+                        }
+                        // Pending but older than 10 minutes: mark as FAILED so we can proceed
+                        txn.setStatus(Transaction.STATUS_FAILED);
+                        txn.setUpdatedAt(now);
+                        transactionRepository.save(txn);
+                    }
+                });
         var showSeat = showSeatRepository.findByShowIdAndSeatId(showId, seatId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ShowSeat not found"));
         if (!ShowSeat.STATUS_AVAILABLE.equals(showSeat.getStatus())) {

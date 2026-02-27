@@ -1,0 +1,89 @@
+# Build MovieTicketBookingSystemBackend and deploy to AWS Elastic Beanstalk on every push.
+#
+# Required GitHub Secrets (Settings → Secrets and variables → Actions):
+#   AWS_ACCESS_KEY_ID       - IAM user access key with EB + S3 permissions
+#   AWS_SECRET_ACCESS_KEY   - IAM user secret key
+#   EB_S3_BUCKET            - S3 bucket for deployment (e.g. elasticbeanstalk-ap-south-1-ACCOUNT_ID)
+#
+name: Build and Deploy to Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'MovieTicketBookingSystemBackend/**'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-south-1
+  EB_APPLICATION_NAME: movie-ticket-booking-system-backend
+  EB_ENVIRONMENT_NAME: Movie-ticket-booking-system-back-env
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        working-directory: MovieTicketBookingSystemBackend
+        run: ./mvnw -B -DskipTests package
+
+      - name: Get artifact path
+        id: artifact
+        working-directory: MovieTicketBookingSystemBackend
+        run: |
+          ARTIFACT=$(ls target/*.war target/*.jar 2>/dev/null | head -1)
+          echo "path=$ARTIFACT" >> $GITHUB_OUTPUT
+          echo "name=$(basename $ARTIFACT)" >> $GITHUB_OUTPUT
+
+      - name: Create deployment package
+        run: |
+          cd MovieTicketBookingSystemBackend
+          ARTIFACT=$(ls target/*.war target/*.jar 2>/dev/null | head -1)
+          ext="${ARTIFACT##*.}"
+          cp "$ARTIFACT" "application.$ext"
+          zip -r deploy.zip "application.$ext"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload to S3
+        run: |
+          VERSION_LABEL="v$(date +%Y%m%d%H%M%S)-${{ github.sha }}"
+          echo "VERSION_LABEL=$VERSION_LABEL" >> $GITHUB_ENV
+          aws s3 cp MovieTicketBookingSystemBackend/deploy.zip \
+            "s3://${{ secrets.EB_S3_BUCKET }}/deploy-$VERSION_LABEL.zip"
+
+      - name: Create application version and deploy
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name ${{ env.EB_APPLICATION_NAME }} \
+            --version-label ${{ env.VERSION_LABEL }} \
+            --source-bundle S3Bucket=${{ secrets.EB_S3_BUCKET }},S3Key=deploy-${{ env.VERSION_LABEL }}.zip \
+            --region ${{ env.AWS_REGION }}
+
+          aws elasticbeanstalk update-environment \
+            --environment-name ${{ env.EB_ENVIRONMENT_NAME }} \
+            --version-label ${{ env.VERSION_LABEL }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Wait for deployment
+        run: |
+          aws elasticbeanstalk wait environment-updated \
+            --environment-name ${{ env.EB_ENVIRONMENT_NAME }} \
+            --region ${{ env.AWS_REGION }}

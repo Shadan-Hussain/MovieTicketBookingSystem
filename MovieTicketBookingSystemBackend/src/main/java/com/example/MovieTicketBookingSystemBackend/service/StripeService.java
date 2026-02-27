@@ -13,8 +13,10 @@ import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
+import com.stripe.model.checkout.SessionCollection;
 import com.stripe.param.RefundCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
+import com.stripe.param.checkout.SessionListParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,13 +36,13 @@ public class StripeService {
 
     private static final Logger log = LoggerFactory.getLogger(StripeService.class);
 
-    @Value("${stripe.secretKey}")
+    @Value("${STRIPE_SECRET_KEY:}")
     private String secretKey;
 
-    @Value("${stripe.successUrl:http://localhost:8081/seats/success}")
+    @Value("${stripe.successUrl}")
     private String successUrl;
 
-    @Value("${stripe.cancelUrl:http://localhost:8081/seats/cancel}")
+    @Value("${stripe.cancelUrl}")
     private String cancelUrl;
 
     private final SeatRepository seatRepository;
@@ -115,6 +117,45 @@ public class StripeService {
         transactionRepository.save(txn);
 
         return new StripeSessionResponse(session.getId(), session.getUrl());
+    }
+
+    /**
+     * Webhook: payment_intent.payment_failed. Marks the corresponding transaction as FAILED if found.
+     */
+    @Transactional
+    public void handlePaymentFailure(String paymentIntentId) {
+        try {
+            Stripe.apiKey = secretKey;
+            SessionListParams params = SessionListParams.builder()
+                    .setPaymentIntent(paymentIntentId)
+                    .setLimit(1L)
+                    .build();
+            SessionCollection sessions = Session.list(params);
+            if (sessions == null || sessions.getData() == null || sessions.getData().isEmpty()) {
+                log.warn("Payment failure but no checkout session found for paymentIntentId={}", paymentIntentId);
+                return;
+            }
+            Session session = sessions.getData().get(0);
+            String sessionId = session.getId();
+            Optional<Transaction> optTxn = transactionRepository.findByStripeSessionId(sessionId);
+            if (optTxn.isEmpty()) {
+                log.warn("Payment failure but no transaction for sessionId={}, paymentIntentId={}", sessionId, paymentIntentId);
+                return;
+            }
+            Transaction txn = optTxn.get();
+            if (Transaction.STATUS_FAILED.equals(txn.getStatus())
+                    || Transaction.STATUS_SUCCESS.equals(txn.getStatus())
+                    || Transaction.STATUS_REFUND_INITIATED.equals(txn.getStatus())) {
+                return;
+            }
+            txn.setStatus(Transaction.STATUS_FAILED);
+            txn.setUpdatedAt(Instant.now());
+            transactionRepository.save(txn);
+            log.info("Payment failed: transactionId={} marked FAILED (paymentIntentId={}, sessionId={})",
+                    txn.getTransactionId(), paymentIntentId, sessionId);
+        } catch (Exception e) {
+            log.error("handlePaymentFailure failed for paymentIntentId={}", paymentIntentId, e);
+        }
     }
 
     public void createRefundForCheckoutSession(String sessionId) throws StripeException {
