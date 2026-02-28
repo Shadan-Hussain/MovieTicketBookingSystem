@@ -33,7 +33,7 @@ jobs:
 
       - name: Build with Maven
         working-directory: MovieTicketBookingSystemBackend
-        run: bash ./mvnw -B -DskipTests package
+        run: bash ./mvnw -B package
 
       - name: Get artifact path
         id: artifact
