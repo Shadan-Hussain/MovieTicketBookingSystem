@@ -1,26 +1,22 @@
-# Build MovieTicketBookingSystemBackend and deploy to AWS Elastic Beanstalk on every push.
+# Deploy MovieTicketBookingSystemBackend to AWS Elastic Beanstalk.
+# Manual trigger only — run when you've turned on Beanstalk, RDS, and ElastiCache to avoid cost.
+# No deploy on push, so services can stay off until you need them.
 #
 # Required GitHub Secrets (Settings → Secrets and variables → Actions):
-#   AWS_ACCESS_KEY_ID       - IAM user access key with EB + S3 permissions
+#   AWS_ACCESS_KEY_ID       - IAM user access key with EB + S3 + RDS permissions
 #   AWS_SECRET_ACCESS_KEY   - IAM user secret key
 #   EB_S3_BUCKET            - S3 bucket for deployment (e.g. elasticbeanstalk-ap-south-1-ACCOUNT_ID)
 #
 name: Build and Deploy to Elastic Beanstalk
 
 on:
-  push:
-    branches:
-      - main
-      - master
-    paths:
-      - 'MovieTicketBookingSystemBackend/**'
-      - '.github/workflows/deploy-backend-eb.yml'
   workflow_dispatch:
 
 env:
   AWS_REGION: ap-south-1
   EB_APPLICATION_NAME: movie-ticket-booking-system-backend
   EB_ENVIRONMENT_NAME: Movie-ticket-booking-system-back-env
+  RDS_INSTANCE_ID: database-2
 
 jobs:
   deploy:
@@ -28,6 +24,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Start RDS if stopped so deploy works when you've turned services on
+      - name: Start RDS if stopped
+        run: |
+          STATUS=$(aws rds describe-db-instances --db-instance-identifier ${{ env.RDS_INSTANCE_ID }} --query 'DBInstances[0].DBInstanceStatus' --output text 2>/dev/null || echo "unknown")
+          if [ "$STATUS" = "stopped" ]; then
+            echo "Starting RDS instance..."
+            aws rds start-db-instance --db-instance-identifier ${{ env.RDS_INSTANCE_ID }}
+            echo "Waiting for RDS to become available (max ~10 min)..."
+            aws rds wait db-instance-available --db-instance-identifier ${{ env.RDS_INSTANCE_ID }}
+            echo "RDS is available."
+          else
+            echo "RDS status: $STATUS (no start needed)."
+          fi
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -55,13 +72,6 @@ jobs:
           ext="${ARTIFACT##*.}"
           cp "$ARTIFACT" "application.$ext"
           zip -r deploy.zip "application.$ext"
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
 
       - name: Upload to S3
         run: |

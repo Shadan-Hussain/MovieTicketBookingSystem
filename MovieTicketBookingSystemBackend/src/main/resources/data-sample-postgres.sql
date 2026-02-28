@@ -1,6 +1,9 @@
 -- Sample data for movie ticket booking (PostgreSQL). Run once on empty schema.
 -- Order: city -> theatre -> hall -> movie -> seat -> show -> show_seat -> users
 -- payment_transaction and ticket are created by the app (auto-generated IDs).
+--
+-- After running this script, run fix-sequences-postgres.sql so the app's next
+-- insert gets max(id)+1 and does not hit "duplicate key" on city_pkey etc.
 
 INSERT INTO city (city_id, name, state_code, created_at) VALUES
   (1, 'Mumbai', 'MH', NOW()),

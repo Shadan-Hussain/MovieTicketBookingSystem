@@ -44,7 +44,7 @@ public class ShowService {
                 .map(ss -> {
                     Seat seat = seatMap.get(ss.getSeatId());
                     if (seat == null) return null;
-                    return new ShowSeatResponse(seat.getSeatId(), seat.getNumber(), seat.getPrice(), seat.getType(), ss.getStatus());
+                    return new ShowSeatResponse(seat.getSeatId(), seat.getRowNum(), seat.getColNum(), seat.getNumber(), seat.getPrice(), seat.getType(), ss.getStatus());
                 })
                 .filter(r -> r != null)
                 .collect(Collectors.toList());
