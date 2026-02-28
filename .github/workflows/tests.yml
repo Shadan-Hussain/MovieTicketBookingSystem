@@ -22,4 +22,4 @@ jobs:
 
       - name: Run tests
         working-directory: MovieTicketBookingSystemBackend
-        run: ./mvnw -B test
+        run: bash ./mvnw -B test
