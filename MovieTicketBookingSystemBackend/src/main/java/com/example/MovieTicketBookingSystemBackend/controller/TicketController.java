@@ -19,12 +19,15 @@ public class TicketController {
     }
 
     @GetMapping
-    public ResponseEntity<TicketResponse> getTicket(
-            @RequestParam Long show_id,
-            @RequestParam Long seat_id,
+    public ResponseEntity<?> getTicketsOrOne(
+            @RequestParam(required = false) Long show_id,
+            @RequestParam(required = false) Long seat_id,
             @RequestAttribute("userId") Long userId) {
-        return ticketService.getTicket(show_id, seat_id, userId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        if (show_id != null && seat_id != null) {
+            return ticketService.getTicket(show_id, seat_id, userId)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        }
+        return ResponseEntity.ok(ticketService.listTicketsForUser(userId));
     }
 }

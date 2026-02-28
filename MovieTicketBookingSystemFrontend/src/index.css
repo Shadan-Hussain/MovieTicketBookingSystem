@@ -1,0 +1,240 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; }
+#root { min-height: 100vh; }
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover { color: #535bf2; }
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover { border-color: #646cff; }
+button:focus, button:focus-visible { outline: 4px auto -webkit-focus-ring-color; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Nav */
+.nav {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+}
+.nav a, .link-btn {
+  color: #646cff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1rem;
+}
+.link-btn { font-weight: 500; }
+.nav a:hover, .link-btn:hover { text-decoration: underline; }
+
+.main { padding: 2rem; max-width: 900px; margin: 0 auto; }
+
+/* Page */
+.page { padding: 1rem 0; }
+.page h1 { font-size: 1.75rem; margin-bottom: 1rem; }
+.page h2 { font-size: 1.2rem; margin: 1.5rem 0 0.5rem; }
+.muted { color: #888; font-size: 0.9rem; }
+
+/* Alerts */
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+.alert-error { background: #4a1a1a; color: #f88; }
+.alert-success { background: #1a4a2a; color: #8f8; }
+
+/* Forms */
+form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+form input {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #1a1a1a;
+  color: inherit;
+  min-width: 140px;
+}
+form input[type="number"] { min-width: 80px; }
+form input[type="datetime-local"] { min-width: 180px; }
+
+/* Cards */
+.card-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.75rem; }
+.card-list .card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 1rem 1.25rem;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.card-list .card:hover { background: #333; }
+.card-list .card strong { display: block; margin-bottom: 0.25rem; }
+.card-list .card span { display: block; font-size: 0.9rem; color: #aaa; }
+.show-list .card span.muted { font-size: 0.8rem; }
+
+/* Movie cards with poster */
+.movie-cards .movie-card {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  text-align: left;
+}
+.movie-poster-box {
+  position: relative;
+  width: 100px;
+  height: 140px;
+  min-width: 100px;
+  min-height: 140px;
+  background: #333;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.movie-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.movie-poster-placeholder {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: #888;
+}
+.movie-poster-placeholder.visible {
+  display: flex;
+}
+.movie-card-info { flex: 1; min-width: 0; }
+.movie-card-info strong { display: block; margin-bottom: 0.25rem; }
+.movie-card-info span { font-size: 0.9rem; color: #aaa; }
+
+.admin-subheading { font-size: 1rem; margin: 1rem 0 0.5rem; font-weight: 600; }
+
+/* Seats */
+.seat-legend {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.seat-legend .seat-box { margin-right: 0.35rem; }
+.seat-grid { margin: 1rem 0; }
+.seat-row { display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap; }
+.seat-box {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-size: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid #555;
+}
+.seat-box.available { background: #2a4a2a; color: #afa; }
+.seat-box.locked { background: #4a4a2a; color: #aa8; cursor: not-allowed; }
+.seat-box.booked { background: #4a2a2a; color: #a88; cursor: not-allowed; }
+.seat-box.selected { background: #2a2a4a; color: #aaf; border-color: #66f; }
+.seat-box:disabled { cursor: not-allowed; opacity: 0.9; }
+.proceed-row { margin-top: 1.5rem; }
+.btn-primary { background: #3636c4; color: #fff; padding: 0.6em 1.5em; }
+.btn-primary:hover { background: #4545d4; }
+
+/* Payment result */
+.payment-result.success h1 { color: #000; }
+.payment-result.fail h1 { color: #f88; }
+.ticket-card {
+  margin-top: 0.5rem;
+  padding: 1.25rem;
+  background: #2a2a2a;
+  border-radius: 8px;
+  border: 1px solid #444;
+  list-style: none;
+}
+.ticket-card:first-child { margin-top: 0; }
+.ticket-card h2 { margin-top: 0; }
+.ticket-card p { margin: 0.5rem 0; }
+
+.transaction-history .transaction-card {
+  margin-top: 0.5rem;
+  padding: 1.25rem;
+  background: #e8eef4;
+  color: #1a2332;
+  border-radius: 8px;
+  border: 1px solid #b8c5d4;
+  list-style: none;
+}
+.transaction-history .transaction-card:first-child { margin-top: 0; }
+.transaction-history .transaction-card p { margin: 0.5rem 0; }
+.transaction-history .transaction-card strong { color: #0d1520; }
+
+/* Admin */
+.admin-manage .admin-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #333;
+}
+.admin-manage .admin-section form { flex-direction: column; align-items: flex-start; }
+.admin-manage form input { margin: 0.25rem 0; }
+.admin-manage .duration-inputs { display: flex; align-items: center; gap: 0.25rem; margin: 0.25rem 0; }
+.admin-manage .duration-inputs input { width: 4rem; }
+.admin-manage .duration-sep { font-weight: 600; }
+
+@media (prefers-color-scheme: light) {
+  :root { color: #213547; background-color: #f5f5f5; }
+  a:hover { color: #747bff; }
+  button { background-color: #e8e8e8; color: #111; }
+  .nav { background: #e0e0e0; border-color: #ccc; }
+  .card-list .card { background: #fff; border-color: #ccc; color: #111; }
+  .card-list .card:hover { background: #f0f0f0; }
+  .card-list .card span { color: #555; }
+  form input { background: #fff; border-color: #ccc; color: #111; }
+  .seat-box.available { background: #c8e6c9; color: #1b5e20; }
+  .seat-box.locked { background: #fff9c4; color: #f57f17; }
+  .seat-box.booked { background: #ffcdd2; color: #b71c1c; }
+  .seat-box.selected { background: #c5cae9; color: #1a237e; }
+  .ticket-card { background: #fff; border-color: #ccc; color: #111; }
+  .transaction-history .transaction-card {
+    background: #f0f4f8;
+    color: #1a2332;
+    border-color: #c5d0de;
+  }
+  .alert-error { background: #ffebee; color: #b71c1c; }
+  .alert-success { background: #e8f5e9; color: #2e7d32; }
+}

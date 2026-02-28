@@ -67,6 +67,6 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
         }
         String token = jwtService.generate(user.getUserId(), user.getUsername());
-        return new AuthResponse(token, user.getUserId());
+        return new AuthResponse(token, user.getUserId(), user.getRole());
     }
 }

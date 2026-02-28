@@ -48,6 +48,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.hamcrest.Matchers.containsString;
@@ -253,7 +254,7 @@ class BackendIntegrationTest {
 
     private Long createShow(Long movieId, Long hallId) throws Exception {
         OffsetDateTime start = OffsetDateTime.now().plusHours(1);
-        OffsetDateTime end = start.plusHours(2);
+        OffsetDateTime end = start.plusMinutes(178);
         AddShowRequest req = new AddShowRequest();
         req.setMovieId(movieId);
         req.setHallId(hallId);
@@ -611,6 +612,34 @@ class BackendIntegrationTest {
         }
 
         @Test
+        @DisplayName("GET /tickets without params returns list of current user tickets")
+        void getMyTicketsList() throws Exception {
+            mockMvc.perform(withAuth(get("/tickets")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$").isArray());
+            Transaction txn = new Transaction();
+            txn.setShow(showRepository.getReferenceById(showId));
+            txn.setSeat(seatRepository.getReferenceById(seatId));
+            txn.setUser(userRepository.findByUsername("testuser").orElseThrow());
+            txn.setStatus(Transaction.STATUS_SUCCESS);
+            txn.setAmount(100L);
+            txn.setCurrency("usd");
+            txn.setStripeSessionId("test-session-" + System.nanoTime());
+            txn.setCreatedAt(Instant.now());
+            txn = transactionRepository.save(txn);
+            Ticket ticket = new Ticket();
+            ticket.setTransaction(txn);
+            ticket.setCreatedAt(Instant.now());
+            ticketRepository.save(ticket);
+            mockMvc.perform(withAuth(get("/tickets")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$").isArray())
+                    .andExpect(jsonPath("$[0].ticketId").exists())
+                    .andExpect(jsonPath("$[0].showId").value(showId))
+                    .andExpect(jsonPath("$[0].seatId").value(seatId));
+        }
+
+        @Test
         @DisplayName("returns 404 when ticket belongs to another user")
         void getTicketReturns404WhenTicketBelongsToAnotherUser() throws Exception {
             SignupRequest signupReq = new SignupRequest();
@@ -645,6 +674,45 @@ class BackendIntegrationTest {
                             .param("show_id", String.valueOf(showId))
                             .param("seat_id", String.valueOf(seatId))))
                     .andExpect(status().isNotFound());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /transactions")
+    class TransactionsApi {
+
+        @Test
+        @DisplayName("returns list of current user transactions (non-PENDING) when authenticated")
+        void getMyTransactionsList() throws Exception {
+            mockMvc.perform(withAuth(get("/transactions")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$").isArray());
+        }
+
+        @Test
+        @DisplayName("excludes PENDING transactions from list")
+        void getMyTransactionsExcludesPending() throws Exception {
+            Transaction txn = new Transaction();
+            txn.setShow(showRepository.getReferenceById(showId));
+            txn.setSeat(seatRepository.getReferenceById(seatId));
+            txn.setUser(userRepository.findByUsername("testuser").orElseThrow());
+            txn.setStatus(Transaction.STATUS_PENDING);
+            txn.setAmount(100L);
+            txn.setCurrency("usd");
+            txn.setStripeSessionId("pending-" + System.nanoTime());
+            txn.setCreatedAt(Instant.now());
+            transactionRepository.save(txn);
+            mockMvc.perform(withAuth(get("/transactions")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$").isArray())
+                    .andExpect(jsonPath("$[?(@.status == 'PENDING')]").isEmpty());
+        }
+
+        @Test
+        @DisplayName("returns 401 without JWT")
+        void getTransactionsUnauthorized() throws Exception {
+            mockMvc.perform(get("/transactions"))
+                    .andExpect(status().isUnauthorized());
         }
     }
 
@@ -940,7 +1008,7 @@ class BackendIntegrationTest {
         @DisplayName("POST /admin/shows with overlapping time in same hall returns 400")
         void addShowOverlappingInHall() throws Exception {
             OffsetDateTime overlapStart = OffsetDateTime.now().plusHours(1).plusMinutes(30);
-            OffsetDateTime overlapEnd = overlapStart.plusHours(1);
+            OffsetDateTime overlapEnd = overlapStart.plusMinutes(178);
             AddShowRequest req = new AddShowRequest();
             req.setMovieId(movieId);
             req.setHallId(hallId);
@@ -950,6 +1018,79 @@ class BackendIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req))))
                     .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("POST /admin/shows with show duration less than movie duration + 30 returns 400")
+        void addShowDurationTooShort() throws Exception {
+            OffsetDateTime start = OffsetDateTime.now().plusHours(5);
+            OffsetDateTime end = start.plusMinutes(148);
+            AddShowRequest req = new AddShowRequest();
+            req.setMovieId(movieId);
+            req.setHallId(hallId);
+            req.setStartTime(start);
+            req.setEndTime(end);
+            mockMvc.perform(withAdminAuth(post("/admin/shows")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req))))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("POST /admin/shows with show duration more than movie duration + 45 returns 400")
+        void addShowDurationTooLong() throws Exception {
+            OffsetDateTime start = OffsetDateTime.now().plusHours(5);
+            OffsetDateTime end = start.plusMinutes(148 + 50);
+            AddShowRequest req = new AddShowRequest();
+            req.setMovieId(movieId);
+            req.setHallId(hallId);
+            req.setStartTime(start);
+            req.setEndTime(end);
+            mockMvc.perform(withAdminAuth(post("/admin/shows")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req))))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("Admin options (dropdowns)")
+    class AdminOptionsApi {
+
+        @Test
+        @DisplayName("GET /admin/options/movies returns id, label and durationMins")
+        void adminOptionsMoviesIncludesDuration() throws Exception {
+            mockMvc.perform(withAdminAuth(get("/admin/options/movies")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$").isArray())
+                    .andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
+                    .andExpect(jsonPath("$[*].durationMins").value(org.hamcrest.Matchers.hasItem(148)))
+                    .andExpect(jsonPath("$[0].id").exists())
+                    .andExpect(jsonPath("$[0].label").exists())
+                    .andExpect(jsonPath("$[0].durationMins").exists());
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE /shows/{showId}/seats/{seatId}/lock")
+    class UnlockSeatApi {
+
+        @Test
+        @DisplayName("unlocks seat when lock is held by current user")
+        void unlockSeatSuccess() throws Exception {
+            mockMvc.perform(withAuth(post("/shows/{showId}/seats/{seatId}/lock", showId, seatId)))
+                    .andExpect(status().isOk());
+            mockMvc.perform(withAuth(delete("/shows/{showId}/seats/{seatId}/lock", showId, seatId)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Seat unlocked"));
+        }
+
+        @Test
+        @DisplayName("returns 200 with message when lock not held by user")
+        void unlockSeatNotHeldByUser() throws Exception {
+            mockMvc.perform(withAuth(delete("/shows/{showId}/seats/{seatId}/lock", showId, seatId)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Lock not held by user"));
         }
     }
 }

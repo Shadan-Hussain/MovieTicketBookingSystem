@@ -70,6 +70,21 @@ public class ShowController {
         return ResponseEntity.ok(new MessageResponse("Seat successfully locked"));
     }
 
+    /**
+     * Removes the seat lock only if it is held by the current user (e.g. user changed selection before proceeding).
+     */
+    @DeleteMapping("/{showId}/seats/{seatId}/lock")
+    public ResponseEntity<MessageResponse> unlockSeat(
+            @PathVariable Long showId,
+            @PathVariable Long seatId,
+            @RequestAttribute("userId") Long userId) {
+        if (!seatLockService.isLockedBy(showId, seatId, userId)) {
+            return ResponseEntity.ok(new MessageResponse("Lock not held by user"));
+        }
+        seatLockService.removeLock(showId, seatId);
+        return ResponseEntity.ok(new MessageResponse("Seat unlocked"));
+    }
+
     @PostMapping("/{showId}/seats/{seatId}/payment-session")
     public ResponseEntity<StripeSessionResponse> createPaymentSession(
             @PathVariable Long showId,

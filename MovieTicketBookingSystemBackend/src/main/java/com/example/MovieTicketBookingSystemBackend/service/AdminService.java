@@ -10,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Admin-only operations. JWT auth can be added later to restrict access.
@@ -39,6 +40,34 @@ public class AdminService {
         this.seatRepository = seatRepository;
         this.showRepository = showRepository;
         this.showSeatRepository = showSeatRepository;
+    }
+
+    public List<OptionDto> listTheatreOptions() {
+        return theatreRepository.findAll().stream()
+                .map(t -> new OptionDto(t.getTheatreId(), t.getName()))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<OptionDto> listHallOptions() {
+        return hallRepository.findAll().stream()
+                .map(h -> new OptionDto(h.getHallId(), h.getTheatre().getName() + " / " + h.getName()))
+                .collect(Collectors.toList());
+    }
+
+    public List<OptionDto> listMovieOptions() {
+        return movieRepository.findAll().stream()
+                .map(m -> new OptionDto(m.getMovieId(), m.getName() + " (" + formatDuration(m.getDurationMins()) + ")", m.getDurationMins()))
+                .collect(Collectors.toList());
+    }
+
+    private static String formatDuration(Integer minutes) {
+        if (minutes == null) return "0m";
+        int h = minutes / 60;
+        int m = minutes % 60;
+        if (h == 0) return m + "m";
+        if (m == 0) return h + "h";
+        return h + "h " + m + "m";
     }
 
     @Transactional
@@ -190,8 +219,19 @@ public class AdminService {
         if (!req.getEndTime().isAfter(req.getStartTime())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End time must be after start time");
         }
+        int movieDurationMins = movie.getDurationMins() != null ? movie.getDurationMins() : 0;
+        long showDurationMins = java.time.temporal.ChronoUnit.MINUTES.between(req.getStartTime(), req.getEndTime());
+        if (showDurationMins < movieDurationMins + 30L) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Show duration must be at least 30 minutes more than movie duration");
+        }
+        if (showDurationMins > movieDurationMins + 45L) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Show duration must be at most 45 minutes more than movie duration");
+        }
         if (showRepository.countOverlappingInHall(hall.getHallId(), req.getStartTime(), req.getEndTime()) > 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Show time overlaps with another show in this hall");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Show time overlaps with another show in this hall");
         }
         Show show = new Show();
         show.setHall(hall);

@@ -16,6 +16,11 @@ public interface ShowRepository extends JpaRepository<Show, Long> {
     @Query("SELECT DISTINCT s.movie.movieId FROM Show s WHERE s.hall.hallId IN :hallIds")
     List<Long> findDistinctMovieIdsByHallIdIn(@Param("hallIds") List<Long> hallIds);
 
+    /**
+     * Counts shows in this hall whose time range overlaps the given [startTime, endTime].
+     * Two ranges overlap iff existing.start < new.end AND existing.end > new.start (catches all cases:
+     * new inside existing, existing inside new, or partial overlap).
+     */
     @Query("SELECT COUNT(s) FROM Show s WHERE s.hall.hallId = :hallId AND s.startTime < :endTime AND s.endTime > :startTime")
     long countOverlappingInHall(@Param("hallId") Long hallId, @Param("startTime") OffsetDateTime startTime, @Param("endTime") OffsetDateTime endTime);
 }

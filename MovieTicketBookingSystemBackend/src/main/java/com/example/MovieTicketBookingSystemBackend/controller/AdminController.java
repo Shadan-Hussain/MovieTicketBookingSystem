@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
+
 /**
  * Admin-only endpoints for adding cities, theatres, halls, movies, seats, and shows.
  * JWT auth can be added later to ensure only admin users can call these.
@@ -20,6 +22,21 @@ public class AdminController {
 
     public AdminController(AdminService adminService) {
         this.adminService = adminService;
+    }
+
+    @GetMapping("/options/theatres")
+    public ResponseEntity<List<OptionDto>> listTheatreOptions() {
+        return ResponseEntity.ok(adminService.listTheatreOptions());
+    }
+
+    @GetMapping("/options/halls")
+    public ResponseEntity<List<OptionDto>> listHallOptions() {
+        return ResponseEntity.ok(adminService.listHallOptions());
+    }
+
+    @GetMapping("/options/movies")
+    public ResponseEntity<List<OptionDto>> listMovieOptions() {
+        return ResponseEntity.ok(adminService.listMovieOptions());
     }
 
     @PostMapping("/cities")
