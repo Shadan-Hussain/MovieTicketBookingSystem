@@ -3,7 +3,6 @@ package com.example.MovieTicketBookingSystemBackend.model;
 import jakarta.persistence.*;
 
 import java.time.Instant;
-import java.time.LocalDate;
 
 @Entity
 @Table(name = "movie")
@@ -14,23 +13,20 @@ public class Movie {
     @Column(name = "movie_id")
     private Long movieId;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, unique = true)
     private String name;
 
     @Column(name = "duration_mins", nullable = false)
     private Integer durationMins;
 
-    @Column(name = "description", columnDefinition = "text")
+    @Column(name = "description", nullable = false, columnDefinition = "text")
     private String description;
 
     @Column(name = "poster_url")
     private String posterUrl;
 
-    @Column(name = "language")
+    @Column(name = "language", nullable = false)
     private String language;
-
-    @Column(name = "release_date")
-    private LocalDate releaseDate;
 
     @Column(name = "created_at")
     private Instant createdAt;
@@ -50,8 +46,6 @@ public class Movie {
     public void setPosterUrl(String posterUrl) { this.posterUrl = posterUrl; }
     public String getLanguage() { return language; }
     public void setLanguage(String language) { this.language = language; }
-    public LocalDate getReleaseDate() { return releaseDate; }
-    public void setReleaseDate(LocalDate releaseDate) { this.releaseDate = releaseDate; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 }

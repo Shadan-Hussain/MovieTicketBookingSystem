@@ -7,5 +7,7 @@ import java.util.List;
 
 public interface HallRepository extends JpaRepository<Hall, Long> {
 
-    List<Hall> findByTheatreId(Long theatreId);
+    List<Hall> findByTheatre_TheatreId(Long theatreId);
+
+    boolean existsByTheatre_TheatreIdAndName(Long theatreId, String name);
 }

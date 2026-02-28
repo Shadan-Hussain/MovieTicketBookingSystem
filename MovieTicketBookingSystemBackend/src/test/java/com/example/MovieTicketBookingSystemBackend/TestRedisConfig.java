@@ -32,6 +32,11 @@ public class TestRedisConfig {
         ValueOperations<String, String> ops = mock(ValueOperations.class);
         when(template.opsForValue()).thenReturn(ops);
         when(template.hasKey(anyString())).thenAnswer(inv -> STORAGE.containsKey(inv.getArgument(0)));
+        when(template.delete(anyString())).thenAnswer(inv -> {
+            STORAGE.remove(inv.getArgument(0));
+            return Boolean.TRUE;
+        });
+        when(ops.get(anyString())).thenAnswer(inv -> STORAGE.get(inv.getArgument(0)));
         when(ops.setIfAbsent(any(), any(), any(Duration.class)))
                 .thenAnswer(inv -> STORAGE.putIfAbsent(inv.getArgument(0), inv.getArgument(1)) == null);
         when(ops.setIfAbsent(any(), any())).thenAnswer(inv -> STORAGE.putIfAbsent(inv.getArgument(0), inv.getArgument(1)) == null);

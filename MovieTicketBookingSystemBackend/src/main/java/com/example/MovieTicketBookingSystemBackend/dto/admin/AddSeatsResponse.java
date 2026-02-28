@@ -1,14 +1,11 @@
 package com.example.MovieTicketBookingSystemBackend.dto.admin;
 
 public class AddSeatsResponse {
-    private final int count;
-    private final int capacity;
+    private final String message;
 
-    public AddSeatsResponse(int count, int capacity) {
-        this.count = count;
-        this.capacity = capacity;
+    public AddSeatsResponse(String message) {
+        this.message = message;
     }
 
-    public int getCount() { return count; }
-    public int getCapacity() { return capacity; }
+    public String getMessage() { return message; }
 }

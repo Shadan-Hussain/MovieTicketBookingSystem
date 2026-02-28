@@ -9,10 +9,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     Optional<Transaction> findByStripeSessionId(String stripeSessionId);
 
-    Optional<Transaction> findByShowIdAndSeatIdAndStatus(Long showId, Long seatId, String status);
+    Optional<Transaction> findByShow_ShowIdAndSeat_SeatIdAndStatus(Long showId, Long seatId, String status);
 
     /**
      * Latest transaction for a show+seat ordered by creation time.
      */
-    Optional<Transaction> findFirstByShowIdAndSeatIdOrderByCreatedAtDesc(Long showId, Long seatId);
+    Optional<Transaction> findFirstByShow_ShowIdAndSeat_SeatIdOrderByCreatedAtDesc(Long showId, Long seatId);
 }

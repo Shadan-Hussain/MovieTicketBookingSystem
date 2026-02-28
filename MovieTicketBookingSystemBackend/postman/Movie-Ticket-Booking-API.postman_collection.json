@@ -1,0 +1,307 @@
+{
+	"info": {
+		"_postman_id": "movie-ticket-booking-api",
+		"name": "Movie Ticket Booking API",
+		"description": "API requests for the Movie Ticket Booking backend. Set {{baseUrl}} (e.g. http://localhost:8080). After **Login**, the token is saved to {{token}} for authenticated requests.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:8081" },
+		{ "key": "token", "value": "" }
+	],
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Signup",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"password123\",\n  \"email\": \"testuser@example.com\",\n  \"name\": \"Test User\"\n}"
+						},
+						"url": "{{baseUrl}}/auth/signup",
+						"description": "Creates a new user. Returns only id; use Login to get a token."
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    try {",
+									"        const json = pm.response.json();",
+									"        const token = json.token;",
+									"        if (token) {",
+									"            pm.collectionVariables.set('token', token);",
+									"            if (typeof pm.environment !== 'undefined') {",
+									"                pm.environment.set('token', token);",
+									"            }",
+									"        }",
+									"    } catch (e) {",
+									"        console.log('Could not save token:', e);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": "{{baseUrl}}/auth/login",
+						"description": "Returns token and userId. Token is saved to collection variable for other requests."
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin (JWT with ADMIN role required)",
+			"item": [
+				{
+					"name": "Add City",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Mumbai\",\n  \"stateCode\": \"MH\"\n}"
+						},
+						"url": "{{baseUrl}}/admin/cities",
+						"description": "Requires user with role ADMIN. Log in as admin (e.g. shadan) first. Returns created city id."
+					}
+				},
+				{
+					"name": "Add Theatre",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cityId\": 1,\n  \"name\": \"PVR Andheri\",\n  \"address\": \"Andheri West, Mumbai\"\n}"
+						},
+						"url": "{{baseUrl}}/admin/theatres",
+						"description": "Replace cityId with a valid city id. Returns theatre id."
+					}
+				},
+				{
+					"name": "Add Hall",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"theatreId\": 1,\n  \"name\": \"Screen 1\"\n}"
+						},
+						"url": "{{baseUrl}}/admin/halls",
+						"description": "Replace theatreId with a valid theatre id. Returns hall id."
+					}
+				},
+				{
+					"name": "Add Movie",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Inception\",\n  \"durationMins\": 148,\n  \"description\": \"A mind-bending thriller.\",\n  \"language\": \"EN\",\n  \"posterUrl\": null\n}"
+						},
+						"url": "{{baseUrl}}/admin/movies",
+						"description": "Returns movie id."
+					}
+				},
+				{
+					"name": "Add Seats",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rows\": 5,\n  \"cols\": 6,\n  \"premiumRowStart\": 0,\n  \"premiumRowEnd\": 1,\n  \"pricePremium\": 200,\n  \"priceNormal\": 100\n}"
+						},
+						"url": "{{baseUrl}}/admin/halls/1/seats",
+						"description": "Replace 1 in path with hall id. Rows/cols define grid; premiumRowStart/End are 0-based inclusive."
+					}
+				},
+				{
+					"name": "Add Show",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"movieId\": 1,\n  \"hallId\": 1,\n  \"startTime\": \"2025-03-15T18:00:00+05:30\",\n  \"endTime\": \"2025-03-15T20:30:00+05:30\"\n}"
+						},
+						"url": "{{baseUrl}}/admin/shows",
+						"description": "Replace movieId/hallId. Use ISO-8601 for startTime/endTime. Times must not overlap other shows in same hall. Returns show id."
+					}
+				}
+			]
+		},
+		{
+			"name": "User (JWT required)",
+			"item": [
+				{
+					"name": "List Cities",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": "{{baseUrl}}/cities",
+						"description": "Requires valid JWT. Run Login first to set {{token}}."
+					}
+				},
+				{
+					"name": "Get Movies by City",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/movies?city_id=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["movies"],
+							"query": [
+								{ "key": "city_id", "value": "1", "description": "City id" }
+							]
+						},
+						"description": "Movies that have shows in the given city."
+					}
+				},
+				{
+					"name": "Get Shows",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/shows?city_id=1&movie_id=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["shows"],
+							"query": [
+								{ "key": "city_id", "value": "1" },
+								{ "key": "movie_id", "value": "1" }
+							]
+						},
+						"description": "Shows for the given city and movie."
+					}
+				},
+				{
+					"name": "Get Seats for Show",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": "{{baseUrl}}/shows/1/seats",
+						"description": "Replace 1 with show id. Returns seats with status (AVAILABLE/LOCKED/BOOKED) from DB and Redis."
+					}
+				},
+				{
+					"name": "Lock Seat",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": "{{baseUrl}}/shows/1/seats/1/lock",
+						"description": "Replace 1/1 with showId/seatId. Lock is tied to the authenticated user. Returns 'Seat successfully locked' or 409 if already locked."
+					}
+				},
+				{
+					"name": "Create Payment Session",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": "{{baseUrl}}/shows/1/seats/1/payment-session",
+						"description": "Replace with showId/seatId. Only works if the seat is locked by the same user. Returns Stripe checkout session URL."
+					}
+				},
+				{
+					"name": "Get Ticket",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/tickets?show_id=1&seat_id=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["tickets"],
+							"query": [
+								{ "key": "show_id", "value": "1" },
+								{ "key": "seat_id", "value": "1" }
+							]
+						},
+						"description": "Returns ticket only if it belongs to the authenticated user. 404 otherwise."
+					}
+				}
+			]
+		},
+		{
+			"name": "Redirect (payment callback)",
+			"item": [
+				{
+					"name": "Payment Success",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/redirect/success?session_id=cs_test_xxx",
+							"host": ["{{baseUrl}}"],
+							"path": ["redirect", "success"],
+							"query": [
+								{ "key": "session_id", "value": "cs_test_xxx" }
+							]
+						},
+						"description": "Stripe redirects here after successful payment. session_id from Stripe."
+					}
+				},
+				{
+					"name": "Payment Cancel",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/redirect/cancel",
+						"description": "Stripe redirects here when user cancels checkout."
+					}
+				}
+			]
+		}
+	]
+}

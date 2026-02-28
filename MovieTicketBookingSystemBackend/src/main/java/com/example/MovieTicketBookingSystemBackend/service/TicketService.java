@@ -20,10 +20,14 @@ public class TicketService {
         this.ticketRepository = ticketRepository;
     }
 
-    /** Find ticket by show and seat (successful transaction). Returns empty if not found. */
-    public Optional<TicketResponse> getTicket(Long showId, Long seatId) {
-        return transactionRepository.findByShowIdAndSeatIdAndStatus(showId, seatId, Transaction.STATUS_SUCCESS)
-                .flatMap(txn -> ticketRepository.findByTransactionId(txn.getTransactionId())
+    /** Find ticket by show and seat (successful transaction). Returns ticket only if it belongs to the given user. */
+    public Optional<TicketResponse> getTicket(Long showId, Long seatId, Long userId) {
+        if (userId == null) {
+            return Optional.empty();
+        }
+        return transactionRepository.findByShow_ShowIdAndSeat_SeatIdAndStatus(showId, seatId, Transaction.STATUS_SUCCESS)
+                .filter(txn -> txn.getUserId() != null && txn.getUserId().equals(userId))
+                .flatMap(txn -> ticketRepository.findByTransaction_TransactionId(txn.getTransactionId())
                         .map(this::toResponse));
     }
 

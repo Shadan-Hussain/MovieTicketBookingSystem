@@ -8,6 +8,7 @@ import com.example.MovieTicketBookingSystemBackend.model.ShowSeat;
 import com.example.MovieTicketBookingSystemBackend.repository.SeatRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.ShowRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.ShowSeatRepository;
+import com.example.MovieTicketBookingSystemBackend.service.SeatLockService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,12 +21,14 @@ public class ShowService {
     private final ShowRepository showRepository;
     private final ShowSeatRepository showSeatRepository;
     private final SeatRepository seatRepository;
+    private final SeatLockService seatLockService;
 
     public ShowService(ShowRepository showRepository, ShowSeatRepository showSeatRepository,
-                       SeatRepository seatRepository) {
+                       SeatRepository seatRepository, SeatLockService seatLockService) {
         this.showRepository = showRepository;
         this.showSeatRepository = showSeatRepository;
         this.seatRepository = seatRepository;
+        this.seatLockService = seatLockService;
     }
 
     public List<ShowResponse> getShowsByCityAndMovie(Long cityId, Long movieId) {
@@ -34,7 +37,7 @@ public class ShowService {
     }
 
     public List<ShowSeatResponse> getSeatsForShow(Long showId) {
-        List<ShowSeat> showSeats = showSeatRepository.findByShowIdOrderBySeatId(showId);
+        List<ShowSeat> showSeats = showSeatRepository.findByShow_ShowIdOrderBySeat_SeatId(showId);
         if (showSeats.isEmpty()) {
             return List.of();
         }
@@ -44,7 +47,10 @@ public class ShowService {
                 .map(ss -> {
                     Seat seat = seatMap.get(ss.getSeatId());
                     if (seat == null) return null;
-                    return new ShowSeatResponse(seat.getSeatId(), seat.getRowNum(), seat.getColNum(), seat.getNumber(), seat.getPrice(), seat.getType(), ss.getStatus());
+                    String status = seatLockService.isLocked(showId, ss.getSeatId())
+                            ? ShowSeat.STATUS_LOCKED
+                            : ss.getStatus();
+                    return new ShowSeatResponse(seat.getSeatId(), seat.getRowNum(), seat.getColNum(), seat.getNumber(), seat.getPrice(), seat.getType(), status);
                 })
                 .filter(r -> r != null)
                 .collect(Collectors.toList());

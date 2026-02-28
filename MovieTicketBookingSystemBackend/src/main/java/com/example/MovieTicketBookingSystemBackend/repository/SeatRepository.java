@@ -14,7 +14,7 @@ import java.util.Optional;
 @Repository
 public interface SeatRepository extends JpaRepository<Seat, Long> {
 
-    List<Seat> findByHallId(Long hallId);
+    List<Seat> findByHall_HallId(Long hallId);
 
     /** Loads seat with pessimistic write lock (SELECT ... FOR UPDATE). Use in booking/update flows. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

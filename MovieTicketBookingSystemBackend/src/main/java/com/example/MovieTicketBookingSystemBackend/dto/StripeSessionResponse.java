@@ -1,8 +1,12 @@
 package com.example.MovieTicketBookingSystemBackend.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class StripeSessionResponse {
 
+    @JsonProperty("sessionId")
     private String sessionId;
+    @JsonProperty("sessionUrl")
     private String sessionUrl;
 
     public StripeSessionResponse(String sessionId, String sessionUrl) {

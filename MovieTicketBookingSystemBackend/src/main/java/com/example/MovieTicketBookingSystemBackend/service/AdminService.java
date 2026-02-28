@@ -3,8 +3,10 @@ package com.example.MovieTicketBookingSystemBackend.service;
 import com.example.MovieTicketBookingSystemBackend.dto.admin.*;
 import com.example.MovieTicketBookingSystemBackend.model.*;
 import com.example.MovieTicketBookingSystemBackend.repository.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
@@ -41,6 +43,15 @@ public class AdminService {
 
     @Transactional
     public CreatedResponse addCity(AddCityRequest req) {
+        if (req.getName() == null || req.getName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name is required");
+        }
+        if (req.getStateCode() == null || req.getStateCode().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "State code is required");
+        }
+        if (cityRepository.existsByName(req.getName().trim())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "City name already exists");
+        }
         City city = new City();
         city.setName(req.getName());
         city.setStateCode(req.getStateCode());
@@ -50,8 +61,19 @@ public class AdminService {
 
     @Transactional
     public CreatedResponse addTheatre(AddTheatreRequest req) {
+        City city = cityRepository.findById(req.getCityId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "City not found"));
+        if (req.getName() == null || req.getName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name is required");
+        }
+        if (req.getAddress() == null || req.getAddress().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Address is required");
+        }
+        if (theatreRepository.existsByName(req.getName().trim())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Theatre name already exists");
+        }
         Theatre theatre = new Theatre();
-        theatre.setCityId(req.getCityId());
+        theatre.setCity(city);
         theatre.setName(req.getName());
         theatre.setAddress(req.getAddress());
         theatre.setCreatedAt(Instant.now());
@@ -60,8 +82,13 @@ public class AdminService {
 
     @Transactional
     public CreatedResponse addHall(AddHallRequest req) {
+        Theatre theatre = theatreRepository.findById(req.getTheatreId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Theatre not found"));
+        if (req.getName() == null || req.getName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name is required");
+        }
         Hall hall = new Hall();
-        hall.setTheatreId(req.getTheatreId());
+        hall.setTheatre(theatre);
         hall.setName(req.getName());
         hall.setCapacity(null);
         hall.setCreatedAt(Instant.now());
@@ -70,13 +97,27 @@ public class AdminService {
 
     @Transactional
     public CreatedResponse addMovie(AddMovieRequest req) {
+        if (req.getName() == null || req.getName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name is required");
+        }
+        if (req.getDurationMins() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duration is required");
+        }
+        if (req.getDescription() == null || req.getDescription().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Description is required");
+        }
+        if (req.getLanguage() == null || req.getLanguage().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Language is required");
+        }
+        if (movieRepository.existsByName(req.getName().trim())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Movie name already exists");
+        }
         Movie movie = new Movie();
         movie.setName(req.getName());
         movie.setDurationMins(req.getDurationMins());
         movie.setDescription(req.getDescription());
         movie.setPosterUrl(req.getPosterUrl());
         movie.setLanguage(req.getLanguage());
-        movie.setReleaseDate(req.getReleaseDate());
         movie.setCreatedAt(Instant.now());
         return new CreatedResponse(movieRepository.save(movie).getMovieId());
     }
@@ -88,10 +129,16 @@ public class AdminService {
      */
     @Transactional
     public AddSeatsResponse addSeats(Long hallId, AddSeatsRequest req) {
-        int rows = req.getRows() != null ? req.getRows() : 0;
-        int cols = req.getCols() != null ? req.getCols() : 0;
+        if (!hallRepository.existsById(hallId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hall not found");
+        }
+        if (req.getRows() == null || req.getCols() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rows and cols are required");
+        }
+        int rows = req.getRows();
+        int cols = req.getCols();
         if (rows <= 0 || cols <= 0) {
-            throw new IllegalArgumentException("rows and cols must be positive");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rows and cols must be positive");
         }
         int premiumStart = req.getPremiumRowStart() != null ? req.getPremiumRowStart() : -1;
         int premiumEnd = req.getPremiumRowEnd() != null ? req.getPremiumRowEnd() : -1;
@@ -100,10 +147,11 @@ public class AdminService {
 
         Instant now = Instant.now();
         int count = 0;
+        Hall hallForSeats = hallRepository.findById(hallId).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hall not found"));
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 Seat seat = new Seat();
-                seat.setHallId(hallId);
+                seat.setHall(hallForSeats);
                 seat.setRowNum(r);
                 seat.setColNum(c);
                 seat.setNumber(seatNumberFromRowCol(r, c));
@@ -116,12 +164,11 @@ public class AdminService {
             }
         }
 
-        Hall hall = hallRepository.findById(hallId).orElseThrow();
-        long existing = seatRepository.findByHallId(hallId).size();
-        hall.setCapacity((int) existing);
-        hallRepository.save(hall);
+        long existing = seatRepository.findByHall_HallId(hallId).size();
+        hallForSeats.setCapacity((int) existing);
+        hallRepository.save(hallForSeats);
 
-        return new AddSeatsResponse(count, (int) existing);
+        return new AddSeatsResponse("Seats added");
     }
 
     private static String seatNumberFromRowCol(int row, int col) {
@@ -133,20 +180,33 @@ public class AdminService {
 
     @Transactional
     public CreatedResponse addShow(AddShowRequest req) {
+        Hall hall = hallRepository.findById(req.getHallId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hall not found"));
+        Movie movie = movieRepository.findById(req.getMovieId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Movie not found"));
+        if (req.getStartTime() == null || req.getEndTime() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start time and end time are required");
+        }
+        if (!req.getEndTime().isAfter(req.getStartTime())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End time must be after start time");
+        }
+        if (showRepository.countOverlappingInHall(hall.getHallId(), req.getStartTime(), req.getEndTime()) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Show time overlaps with another show in this hall");
+        }
         Show show = new Show();
-        show.setMovieId(req.getMovieId());
-        show.setHallId(req.getHallId());
+        show.setHall(hall);
+        show.setMovie(movie);
         show.setStartTime(req.getStartTime());
         show.setEndTime(req.getEndTime());
         show.setCreatedAt(Instant.now());
         show = showRepository.save(show);
 
-        List<Seat> seats = seatRepository.findByHallId(req.getHallId());
+        List<Seat> seats = seatRepository.findByHall_HallId(hall.getHallId());
         Instant now = Instant.now();
         for (Seat seat : seats) {
             ShowSeat showSeat = new ShowSeat();
-            showSeat.setShowId(show.getShowId());
-            showSeat.setSeatId(seat.getSeatId());
+            showSeat.setShow(show);
+            showSeat.setSeat(seat);
             showSeat.setStatus(ShowSeat.STATUS_AVAILABLE);
             showSeat.setCreatedAt(now);
             showSeatRepository.save(showSeat);

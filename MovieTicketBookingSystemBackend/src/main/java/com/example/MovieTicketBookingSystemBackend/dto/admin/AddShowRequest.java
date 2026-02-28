@@ -1,11 +1,17 @@
 package com.example.MovieTicketBookingSystemBackend.dto.admin;
 
+import jakarta.validation.constraints.NotNull;
+
 import java.time.OffsetDateTime;
 
 public class AddShowRequest {
+    @NotNull(message = "movieId is required")
     private Long movieId;
+    @NotNull(message = "hallId is required")
     private Long hallId;
+    @NotNull(message = "startTime is required")
     private OffsetDateTime startTime;
+    @NotNull(message = "endTime is required")
     private OffsetDateTime endTime;
 
     public Long getMovieId() { return movieId; }

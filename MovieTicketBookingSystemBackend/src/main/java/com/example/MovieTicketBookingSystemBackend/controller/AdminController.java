@@ -2,6 +2,7 @@ package com.example.MovieTicketBookingSystemBackend.controller;
 
 import com.example.MovieTicketBookingSystemBackend.dto.admin.*;
 import com.example.MovieTicketBookingSystemBackend.service.AdminService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,37 +23,25 @@ public class AdminController {
     }
 
     @PostMapping("/cities")
-    public ResponseEntity<CreatedResponse> addCity(@RequestBody AddCityRequest request) {
-        if (request.getName() == null || request.getName().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required");
-        }
+    public ResponseEntity<CreatedResponse> addCity(@Valid @RequestBody AddCityRequest request) {
         CreatedResponse created = adminService.addCity(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PostMapping("/theatres")
-    public ResponseEntity<CreatedResponse> addTheatre(@RequestBody AddTheatreRequest request) {
-        if (request.getCityId() == null || request.getName() == null || request.getName().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "cityId and name are required");
-        }
+    public ResponseEntity<CreatedResponse> addTheatre(@Valid @RequestBody AddTheatreRequest request) {
         CreatedResponse created = adminService.addTheatre(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PostMapping("/halls")
-    public ResponseEntity<CreatedResponse> addHall(@RequestBody AddHallRequest request) {
-        if (request.getTheatreId() == null || request.getName() == null || request.getName().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "theatreId and name are required");
-        }
+    public ResponseEntity<CreatedResponse> addHall(@Valid @RequestBody AddHallRequest request) {
         CreatedResponse created = adminService.addHall(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PostMapping("/movies")
-    public ResponseEntity<CreatedResponse> addMovie(@RequestBody AddMovieRequest request) {
-        if (request.getName() == null || request.getName().isBlank() || request.getDurationMins() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name and durationMins are required");
-        }
+    public ResponseEntity<CreatedResponse> addMovie(@Valid @RequestBody AddMovieRequest request) {
         CreatedResponse created = adminService.addMovie(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -64,10 +53,7 @@ public class AdminController {
     @PostMapping("/halls/{hallId}/seats")
     public ResponseEntity<AddSeatsResponse> addSeats(
             @PathVariable Long hallId,
-            @RequestBody AddSeatsRequest request) {
-        if (request == null || request.getRows() == null || request.getCols() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "rows and cols are required");
-        }
+            @Valid @RequestBody AddSeatsRequest request) {
         if (request.getRows() <= 0 || request.getCols() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "rows and cols must be positive");
         }
@@ -76,12 +62,7 @@ public class AdminController {
     }
 
     @PostMapping("/shows")
-    public ResponseEntity<CreatedResponse> addShow(@RequestBody AddShowRequest request) {
-        if (request.getMovieId() == null || request.getHallId() == null
-                || request.getStartTime() == null || request.getEndTime() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "movieId, hallId, startTime and endTime are required");
-        }
+    public ResponseEntity<CreatedResponse> addShow(@Valid @RequestBody AddShowRequest request) {
         CreatedResponse created = adminService.addShow(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }

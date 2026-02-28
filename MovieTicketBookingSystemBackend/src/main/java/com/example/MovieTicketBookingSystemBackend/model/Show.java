@@ -14,11 +14,13 @@ public class Show {
     @Column(name = "show_id")
     private Long showId;
 
-    @Column(name = "movie_id", nullable = false)
-    private Long movieId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "movie_id", nullable = false)
+    private Movie movie;
 
-    @Column(name = "hall_id", nullable = false)
-    private Long hallId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hall_id", nullable = false)
+    private Hall hall;
 
     @Column(name = "start_time", nullable = false)
     private OffsetDateTime startTime;
@@ -34,10 +36,12 @@ public class Show {
 
     public Long getShowId() { return showId; }
     public void setShowId(Long showId) { this.showId = showId; }
-    public Long getMovieId() { return movieId; }
-    public void setMovieId(Long movieId) { this.movieId = movieId; }
-    public Long getHallId() { return hallId; }
-    public void setHallId(Long hallId) { this.hallId = hallId; }
+    public Movie getMovie() { return movie; }
+    public void setMovie(Movie movie) { this.movie = movie; }
+    public Long getMovieId() { return movie != null ? movie.getMovieId() : null; }
+    public Hall getHall() { return hall; }
+    public void setHall(Hall hall) { this.hall = hall; }
+    public Long getHallId() { return hall != null ? hall.getHallId() : null; }
     public OffsetDateTime getStartTime() { return startTime; }
     public void setStartTime(OffsetDateTime startTime) { this.startTime = startTime; }
     public OffsetDateTime getEndTime() { return endTime; }

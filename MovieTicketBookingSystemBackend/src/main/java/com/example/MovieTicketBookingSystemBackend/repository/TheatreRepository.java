@@ -7,5 +7,7 @@ import java.util.List;
 
 public interface TheatreRepository extends JpaRepository<Theatre, Long> {
 
-    List<Theatre> findByCityId(Long cityId);
+    List<Theatre> findByCity_CityId(Long cityId);
+
+    boolean existsByName(String name);
 }

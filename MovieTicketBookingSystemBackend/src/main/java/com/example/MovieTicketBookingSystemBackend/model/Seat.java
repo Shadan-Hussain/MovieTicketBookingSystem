@@ -5,7 +5,10 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "seat", uniqueConstraints = @UniqueConstraint(columnNames = { "hall_id", "row_num", "col_num" }))
+@Table(name = "seat", uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "hall_id", "row_num", "col_num" }),
+        @UniqueConstraint(columnNames = { "hall_id", "number" })
+})
 public class Seat {
 
     public static final String TYPE_NORMAL = "NORMAL";
@@ -16,13 +19,14 @@ public class Seat {
     @Column(name = "seat_id")
     private Long seatId;
 
-    @Column(name = "hall_id", nullable = false)
-    private Long hallId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hall_id", nullable = false)
+    private Hall hall;
 
-    @Column(name = "row_num")
+    @Column(name = "row_num", nullable = false)
     private Integer rowNum;
 
-    @Column(name = "col_num")
+    @Column(name = "col_num", nullable = false)
     private Integer colNum;
 
     @Column(name = "number", nullable = false)
@@ -42,8 +46,9 @@ public class Seat {
 
     public Long getSeatId() { return seatId; }
     public void setSeatId(Long seatId) { this.seatId = seatId; }
-    public Long getHallId() { return hallId; }
-    public void setHallId(Long hallId) { this.hallId = hallId; }
+    public Hall getHall() { return hall; }
+    public void setHall(Hall hall) { this.hall = hall; }
+    public Long getHallId() { return hall != null ? hall.getHallId() : null; }
     public Integer getRowNum() { return rowNum; }
     public void setRowNum(Integer rowNum) { this.rowNum = rowNum; }
     public Integer getColNum() { return colNum; }

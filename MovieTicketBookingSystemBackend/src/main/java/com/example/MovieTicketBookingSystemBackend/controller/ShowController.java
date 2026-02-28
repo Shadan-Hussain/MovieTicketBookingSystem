@@ -1,5 +1,6 @@
 package com.example.MovieTicketBookingSystemBackend.controller;
 
+import com.example.MovieTicketBookingSystemBackend.dto.MessageResponse;
 import com.example.MovieTicketBookingSystemBackend.dto.ShowResponse;
 import com.example.MovieTicketBookingSystemBackend.dto.ShowSeatResponse;
 import com.example.MovieTicketBookingSystemBackend.dto.StripeSessionResponse;
@@ -16,9 +17,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
+
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 
 @RestController
 @RequestMapping("/shows")
@@ -53,25 +55,30 @@ public class ShowController {
     }
 
     @PostMapping("/{showId}/seats/{seatId}/lock")
-    public ResponseEntity<Void> lockSeat(@PathVariable Long showId, @PathVariable Long seatId) {
-        var showSeat = showSeatRepository.findByShowIdAndSeatId(showId, seatId)
+    public ResponseEntity<MessageResponse> lockSeat(
+            @PathVariable Long showId,
+            @PathVariable Long seatId,
+            @RequestAttribute("userId") Long userId) {
+        var showSeat = showSeatRepository.findByShow_ShowIdAndSeat_SeatId(showId, seatId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ShowSeat not found"));
         if (!ShowSeat.STATUS_AVAILABLE.equals(showSeat.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Seat is not available");
         }
-        if (!seatLockService.setLockIfAbsent(showId, seatId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Seat is locked; try again later");
+        if (!seatLockService.setLockIfAbsent(showId, seatId, userId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Seat already locked");
         }
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new MessageResponse("Seat successfully locked"));
     }
 
     @PostMapping("/{showId}/seats/{seatId}/payment-session")
     public ResponseEntity<StripeSessionResponse> createPaymentSession(
-            @PathVariable Long showId, @PathVariable Long seatId) {
-        if (!seatLockService.isLocked(showId, seatId)) {
-            throw new ResponseStatusException(HttpStatus.GONE, "Lock expired; please lock the seat again");
+            @PathVariable Long showId,
+            @PathVariable Long seatId,
+            @RequestAttribute("userId") Long userId) {
+        if (!seatLockService.isLockedBy(showId, seatId, userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Lock expired or held by another user; please lock the seat again");
         }
-        transactionRepository.findFirstByShowIdAndSeatIdOrderByCreatedAtDesc(showId, seatId)
+        transactionRepository.findFirstByShow_ShowIdAndSeat_SeatIdOrderByCreatedAtDesc(showId, seatId)
                 .ifPresent(txn -> {
                     if (Transaction.STATUS_SUCCESS.equals(txn.getStatus())) {
                         throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -90,13 +97,13 @@ public class ShowController {
                         transactionRepository.save(txn);
                     }
                 });
-        var showSeat = showSeatRepository.findByShowIdAndSeatId(showId, seatId)
+        var showSeat = showSeatRepository.findByShow_ShowIdAndSeat_SeatId(showId, seatId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ShowSeat not found"));
         if (!ShowSeat.STATUS_AVAILABLE.equals(showSeat.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Seat is not available");
         }
         try {
-            StripeSessionResponse response = stripeService.createCheckoutSession(showId, seatId);
+            StripeSessionResponse response = stripeService.createCheckoutSession(showId, seatId, userId);
             return ResponseEntity.ok(response);
         } catch (StripeException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Payment session creation failed", e);

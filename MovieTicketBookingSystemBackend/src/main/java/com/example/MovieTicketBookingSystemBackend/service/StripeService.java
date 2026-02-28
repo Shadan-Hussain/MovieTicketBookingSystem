@@ -6,9 +6,11 @@ import com.example.MovieTicketBookingSystemBackend.model.ShowSeat;
 import com.example.MovieTicketBookingSystemBackend.model.Ticket;
 import com.example.MovieTicketBookingSystemBackend.model.Transaction;
 import com.example.MovieTicketBookingSystemBackend.repository.SeatRepository;
+import com.example.MovieTicketBookingSystemBackend.repository.ShowRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.ShowSeatRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.TicketRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.TransactionRepository;
+import com.example.MovieTicketBookingSystemBackend.repository.UserRepository;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Refund;
@@ -46,17 +48,23 @@ public class StripeService {
     private String cancelUrl;
 
     private final SeatRepository seatRepository;
+    private final ShowRepository showRepository;
+    private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
     private final ShowSeatRepository showSeatRepository;
     private final TicketRepository ticketRepository;
     private final SeatLockService seatLockService;
 
     public StripeService(SeatRepository seatRepository,
+                         ShowRepository showRepository,
+                         UserRepository userRepository,
                          TransactionRepository transactionRepository,
                          ShowSeatRepository showSeatRepository,
                          TicketRepository ticketRepository,
                          SeatLockService seatLockService) {
         this.seatRepository = seatRepository;
+        this.showRepository = showRepository;
+        this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.showSeatRepository = showSeatRepository;
         this.ticketRepository = ticketRepository;
@@ -64,10 +72,13 @@ public class StripeService {
     }
 
     /**
-     * Creates a Stripe Checkout Session for (showId, seatId). Creates Transaction PENDING with metadata.
-     * Caller must hold Redis lock for (showId, seatId).
+     * Creates a Stripe Checkout Session for (showId, seatId, userId). Creates Transaction PENDING with metadata.
+     * Caller must hold Redis lock for (showId, seatId) for this user.
      */
-    public StripeSessionResponse createCheckoutSession(Long showId, Long seatId) throws StripeException {
+    public StripeSessionResponse createCheckoutSession(Long showId, Long seatId, Long userId) throws StripeException {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID is required");
+        }
         Stripe.apiKey = secretKey;
 
         Seat seat = seatRepository.findById(seatId)
@@ -101,13 +112,15 @@ public class StripeService {
                         .addLineItem(lineItem)
                         .putMetadata("show_id", String.valueOf(showId))
                         .putMetadata("seat_id", String.valueOf(seatId))
+                        .putMetadata("user_id", String.valueOf(userId))
                         .build();
 
         Session session = Session.create(params);
 
         Transaction txn = new Transaction();
-        txn.setShowId(showId);
-        txn.setSeatId(seatId);
+        txn.setShow(showRepository.getReferenceById(showId));
+        txn.setSeat(seatRepository.getReferenceById(seatId));
+        txn.setUser(userRepository.getReferenceById(userId));
         txn.setStripeSessionId(session.getId());
         txn.setAmount(amountCents);
         txn.setCurrency("usd");
@@ -217,7 +230,7 @@ public class StripeService {
         }
 
         try {
-            ShowSeat showSeat = showSeatRepository.findByShowIdAndSeatId(showId, seatId)
+            ShowSeat showSeat = showSeatRepository.findByShow_ShowIdAndSeat_SeatId(showId, seatId)
                     .orElseThrow(() -> new IllegalStateException("ShowSeat not found: " + showId + "," + seatId));
             showSeat.setStatus(ShowSeat.STATUS_BOOKED);
             showSeatRepository.save(showSeat);
@@ -227,9 +240,9 @@ public class StripeService {
             transactionRepository.save(txn);
             log.info("Payment success: transactionId={} showId={} seatId={} sessionId={}", txn.getTransactionId(), showId, seatId, sessionId);
 
-            if (ticketRepository.findByTransactionId(txn.getTransactionId()).isEmpty()) {
+            if (ticketRepository.findByTransaction_TransactionId(txn.getTransactionId()).isEmpty()) {
                 Ticket ticket = new Ticket();
-                ticket.setTransactionId(txn.getTransactionId());
+                ticket.setTransaction(txn);
                 ticket.setCreatedAt(Instant.now());
                 ticketRepository.save(ticket);
             }

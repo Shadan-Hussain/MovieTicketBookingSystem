@@ -1,7 +1,5 @@
 package com.example.MovieTicketBookingSystemBackend.dto;
 
-import java.time.LocalDate;
-
 public class MovieResponse {
 
     private Long movieId;
@@ -10,17 +8,15 @@ public class MovieResponse {
     private String description;
     private String posterUrl;
     private String language;
-    private LocalDate releaseDate;
 
     public MovieResponse(Long movieId, String name, Integer durationMins, String description,
-                         String posterUrl, String language, LocalDate releaseDate) {
+                         String posterUrl, String language) {
         this.movieId = movieId;
         this.name = name;
         this.durationMins = durationMins;
         this.description = description;
         this.posterUrl = posterUrl;
         this.language = language;
-        this.releaseDate = releaseDate;
     }
 
     public Long getMovieId() { return movieId; }
@@ -29,5 +25,4 @@ public class MovieResponse {
     public String getDescription() { return description; }
     public String getPosterUrl() { return posterUrl; }
     public String getLanguage() { return language; }
-    public LocalDate getReleaseDate() { return releaseDate; }
 }

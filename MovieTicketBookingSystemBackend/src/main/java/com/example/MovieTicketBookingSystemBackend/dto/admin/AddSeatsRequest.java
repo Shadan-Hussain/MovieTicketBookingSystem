@@ -1,12 +1,16 @@
 package com.example.MovieTicketBookingSystemBackend.dto.admin;
 
+import jakarta.validation.constraints.NotNull;
+
 /**
  * Create a grid of seats for a hall.
  * Rows and cols define the grid size. Row indices are 0-based.
  * Rows from premiumRowStart to premiumRowEnd (inclusive) are PREMIUM; the rest are NORMAL.
  */
 public class AddSeatsRequest {
+    @NotNull(message = "rows is required")
     private Integer rows;
+    @NotNull(message = "cols is required")
     private Integer cols;
     /** 0-based inclusive start row for premium seats (e.g. 0 = first row). */
     private Integer premiumRowStart;

@@ -13,10 +13,10 @@ public class City {
     @Column(name = "city_id")
     private Long cityId;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @Column(name = "state_code")
+    @Column(name = "state_code", nullable = false)
     private String stateCode;
 
     @Column(name = "created_at")

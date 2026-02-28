@@ -1,14 +1,18 @@
 package com.example.MovieTicketBookingSystemBackend.dto.admin;
 
-import java.time.LocalDate;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public class AddMovieRequest {
+    @NotBlank(message = "name is required")
     private String name;
+    @NotNull(message = "durationMins is required")
     private Integer durationMins;
+    @NotBlank(message = "description is required")
     private String description;
     private String posterUrl;
+    @NotBlank(message = "language is required")
     private String language;
-    private LocalDate releaseDate;
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -20,6 +24,4 @@ public class AddMovieRequest {
     public void setPosterUrl(String posterUrl) { this.posterUrl = posterUrl; }
     public String getLanguage() { return language; }
     public void setLanguage(String language) { this.language = language; }
-    public LocalDate getReleaseDate() { return releaseDate; }
-    public void setReleaseDate(LocalDate releaseDate) { this.releaseDate = releaseDate; }
 }

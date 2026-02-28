@@ -18,11 +18,17 @@ public class Transaction {
     @Column(name = "transaction_id")
     private Long transactionId;
 
-    @Column(name = "show_id", nullable = false)
-    private Long showId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "show_id", nullable = false)
+    private Show show;
 
-    @Column(name = "seat_id", nullable = false)
-    private Long seatId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seat_id", nullable = false)
+    private Seat seat;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(name = "stripe_session_id", unique = true)
     private String stripeSessionId;
@@ -47,10 +53,15 @@ public class Transaction {
 
     public Long getTransactionId() { return transactionId; }
     public void setTransactionId(Long transactionId) { this.transactionId = transactionId; }
-    public Long getShowId() { return showId; }
-    public void setShowId(Long showId) { this.showId = showId; }
-    public Long getSeatId() { return seatId; }
-    public void setSeatId(Long seatId) { this.seatId = seatId; }
+    public Show getShow() { return show; }
+    public void setShow(Show show) { this.show = show; }
+    public Long getShowId() { return show != null ? show.getShowId() : null; }
+    public Seat getSeat() { return seat; }
+    public void setSeat(Seat seat) { this.seat = seat; }
+    public Long getSeatId() { return seat != null ? seat.getSeatId() : null; }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+    public Long getUserId() { return user != null ? user.getUserId() : null; }
     public String getStripeSessionId() { return stripeSessionId; }
     public void setStripeSessionId(String stripeSessionId) { this.stripeSessionId = stripeSessionId; }
     public Long getAmount() { return amount; }

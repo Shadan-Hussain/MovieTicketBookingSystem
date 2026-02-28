@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "hall")
+@Table(name = "hall", uniqueConstraints = @UniqueConstraint(columnNames = { "theatre_id", "name" }))
 public class Hall {
 
     @Id
@@ -13,8 +13,9 @@ public class Hall {
     @Column(name = "hall_id")
     private Long hallId;
 
-    @Column(name = "theatre_id", nullable = false)
-    private Long theatreId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "theatre_id", nullable = false)
+    private Theatre theatre;
 
     @Column(name = "name", nullable = false)
     private String name;
@@ -30,8 +31,9 @@ public class Hall {
 
     public Long getHallId() { return hallId; }
     public void setHallId(Long hallId) { this.hallId = hallId; }
-    public Long getTheatreId() { return theatreId; }
-    public void setTheatreId(Long theatreId) { this.theatreId = theatreId; }
+    public Theatre getTheatre() { return theatre; }
+    public void setTheatre(Theatre theatre) { this.theatre = theatre; }
+    public Long getTheatreId() { return theatre != null ? theatre.getTheatreId() : null; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public Integer getCapacity() { return capacity; }

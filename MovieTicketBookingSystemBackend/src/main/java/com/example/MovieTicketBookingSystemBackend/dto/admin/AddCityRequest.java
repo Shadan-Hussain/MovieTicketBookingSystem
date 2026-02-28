@@ -1,7 +1,11 @@
 package com.example.MovieTicketBookingSystemBackend.dto.admin;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class AddCityRequest {
+    @NotBlank(message = "name is required")
     private String name;
+    @NotBlank(message = "stateCode is required")
     private String stateCode;
 
     public String getName() { return name; }

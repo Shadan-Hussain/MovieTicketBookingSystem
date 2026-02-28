@@ -13,13 +13,14 @@ public class Theatre {
     @Column(name = "theatre_id")
     private Long theatreId;
 
-    @Column(name = "city_id", nullable = false)
-    private Long cityId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "city_id", nullable = false)
+    private City city;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @Column(name = "address")
+    @Column(name = "address", nullable = false)
     private String address;
 
     @Column(name = "created_at")
@@ -30,8 +31,9 @@ public class Theatre {
 
     public Long getTheatreId() { return theatreId; }
     public void setTheatreId(Long theatreId) { this.theatreId = theatreId; }
-    public Long getCityId() { return cityId; }
-    public void setCityId(Long cityId) { this.cityId = cityId; }
+    public City getCity() { return city; }
+    public void setCity(City city) { this.city = city; }
+    public Long getCityId() { return city != null ? city.getCityId() : null; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getAddress() { return address; }

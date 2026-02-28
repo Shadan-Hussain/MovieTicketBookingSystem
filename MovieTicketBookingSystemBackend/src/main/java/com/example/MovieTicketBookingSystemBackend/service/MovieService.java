@@ -32,14 +32,14 @@ public class MovieService {
 
     /** Movies that have at least one show in the given city. */
     public List<MovieResponse> getMoviesByCity(Long cityId) {
-        List<Long> theatreIds = theatreRepository.findByCityId(cityId).stream()
+        List<Long> theatreIds = theatreRepository.findByCity_CityId(cityId).stream()
                 .map(Theatre::getTheatreId)
                 .toList();
         if (theatreIds.isEmpty()) {
             return Collections.emptyList();
         }
         List<Long> hallIds = theatreIds.stream()
-                .flatMap(tid -> hallRepository.findByTheatreId(tid).stream())
+                .flatMap(tid -> hallRepository.findByTheatre_TheatreId(tid).stream())
                 .map(Hall::getHallId)
                 .collect(Collectors.toList());
         if (hallIds.isEmpty()) {
@@ -55,6 +55,6 @@ public class MovieService {
 
     private MovieResponse toResponse(Movie m) {
         return new MovieResponse(m.getMovieId(), m.getName(), m.getDurationMins(), m.getDescription(),
-                m.getPosterUrl(), m.getLanguage(), m.getReleaseDate());
+                m.getPosterUrl(), m.getLanguage());
     }
 }
