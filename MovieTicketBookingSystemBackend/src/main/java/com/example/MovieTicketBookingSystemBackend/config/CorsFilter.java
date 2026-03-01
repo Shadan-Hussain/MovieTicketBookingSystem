@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @Order(0)
 public class CorsFilter extends OncePerRequestFilter {
 
-    @Value("${cors.allowedOrigins:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174}")
+    @Value("${cors.allowedOrigins:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,https://movieticketbookingsystem-l44i.onrender.com}")
     private String allowedOriginsConfig;
 
     @Override
