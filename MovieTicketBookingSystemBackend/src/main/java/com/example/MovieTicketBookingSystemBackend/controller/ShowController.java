@@ -12,6 +12,8 @@ import com.example.MovieTicketBookingSystemBackend.service.SeatLockService;
 import com.example.MovieTicketBookingSystemBackend.service.ShowService;
 import com.example.MovieTicketBookingSystemBackend.service.StripeService;
 import com.stripe.exception.StripeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +28,7 @@ import java.time.Instant;
 @RequestMapping("/shows")
 public class ShowController {
 
+    private static final Logger log = LoggerFactory.getLogger(ShowController.class);
     private final ShowService showService;
     private final ShowSeatRepository showSeatRepository;
     private final TransactionRepository transactionRepository;
@@ -121,6 +124,7 @@ public class ShowController {
             StripeSessionResponse response = stripeService.createCheckoutSession(showId, seatId, userId);
             return ResponseEntity.ok(response);
         } catch (StripeException e) {
+            log.error("Payment session creation failed for showId={}, seatId={}", showId, seatId, e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Payment session creation failed", e);
         }
     }

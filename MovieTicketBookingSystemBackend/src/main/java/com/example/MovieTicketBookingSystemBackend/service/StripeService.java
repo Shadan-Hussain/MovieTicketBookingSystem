@@ -249,6 +249,7 @@ public class StripeService {
 
             seatLockService.removeLock(showId, seatId);
         } catch (DataIntegrityViolationException e) {
+            log.error("Duplicate ticket on payment success (idempotent), sessionId={}", sessionId, e);
             // Duplicate ticket: ensure transaction is SUCCESS
             txn.setStatus(Transaction.STATUS_SUCCESS);
             txn.setUpdatedAt(Instant.now());

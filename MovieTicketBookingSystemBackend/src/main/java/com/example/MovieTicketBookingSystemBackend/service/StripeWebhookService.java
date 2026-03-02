@@ -54,7 +54,7 @@ public class StripeWebhookService {
             event = Webhook.constructEvent(payload, stripeSignature, webhookSecret);
         } catch (SignatureVerificationException e) {
             log.warn("Webhook signature verification failed: {} (payload length={}). For local dev use the secret from 'stripe listen', not Dashboard.",
-                    e.getMessage(), rawPayload.length);
+                    e.getMessage(), rawPayload.length, e);
             return "Invalid signature";
         }
 
@@ -112,7 +112,7 @@ public class StripeWebhookService {
                     paymentIntent = (PaymentIntent) obj;
                 }
             } catch (Exception e) {
-                log.error("Failed to deserialize payment intent from event: {}", e.getMessage());
+                log.error("Failed to deserialize payment intent from event", e);
             }
         }
         if (paymentIntent == null) {
@@ -144,7 +144,7 @@ public class StripeWebhookService {
                 return (Session) obj;
             }
         } catch (Exception e) {
-            log.error("Failed to deserialize checkout session from event: {}", e.getMessage());
+            log.error("Failed to deserialize checkout session from event", e);
         }
         log.error("Event data object is not a checkout session");
         return null;

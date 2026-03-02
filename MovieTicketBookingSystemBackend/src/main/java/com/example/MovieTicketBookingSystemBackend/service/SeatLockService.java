@@ -1,5 +1,7 @@
 package com.example.MovieTicketBookingSystemBackend.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -10,6 +12,7 @@ import java.util.Optional;
 @Service
 public class SeatLockService {
 
+    private static final Logger log = LoggerFactory.getLogger(SeatLockService.class);
     private static final String TICKET_LOCK_VALUE = "locked";
     private static final Duration SEAT_LOCK_TTL = Duration.ofMinutes(10);
     private static final Duration TICKET_LOCK_TTL = Duration.ofMinutes(10);
@@ -50,6 +53,7 @@ public class SeatLockService {
         try {
             return Optional.of(Long.parseLong(value));
         } catch (NumberFormatException e) {
+            log.warn("Invalid lock value in Redis, expected numeric user id: key={}, value={}", key, value, e);
             return Optional.empty();
         }
     }
