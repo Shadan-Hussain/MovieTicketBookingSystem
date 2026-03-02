@@ -9,6 +9,7 @@ export default function PaymentSuccess() {
   const seatId = sessionStorage.getItem('payment_seatId');
 
   useEffect(() => {
+    if (ticket) return;
     if (!showId || !seatId) {
       setMessage('Missing booking info.');
       return;
@@ -35,7 +36,7 @@ export default function PaymentSuccess() {
     };
     poll();
     return () => { cancelled = true; };
-  }, [showId, seatId]);
+  }, [showId, seatId, ticket]);
 
   return (
     <div className="page payment-result success">

@@ -240,6 +240,14 @@ public class StripeService {
             transactionRepository.save(txn);
             log.info("Payment success: transactionId={} showId={} seatId={} sessionId={}", txn.getTransactionId(), showId, seatId, sessionId);
 
+            // FOR TESTING: delay before inserting ticket so frontend "redirecting..." polling can be verified. Remove in production.
+//            try {
+//                Thread.sleep(30000);
+//            } catch (InterruptedException e) {
+//                Thread.currentThread().interrupt();
+//                log.warn("Ticket delay interrupted", e);
+//            }
+
             if (ticketRepository.findByTransaction_TransactionId(txn.getTransactionId()).isEmpty()) {
                 Ticket ticket = new Ticket();
                 ticket.setTransaction(txn);
