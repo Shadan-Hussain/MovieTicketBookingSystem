@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import CityList from './pages/CityList';
 import MovieList from './pages/MovieList';
+import MovieDetail from './pages/MovieDetail';
 import ShowList from './pages/ShowList';
 import SeatMap from './pages/SeatMap';
 import ProceedingToPayment from './pages/ProceedingToPayment';
@@ -54,6 +55,7 @@ export default function App() {
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
     localStorage.removeItem('role');
+    localStorage.removeItem('userName');
     setToken(null);
     setRole('USER');
   }
@@ -71,6 +73,7 @@ export default function App() {
             <Route path="/payment/cancel" element={<PaymentCancel />} />
             <Route path="/cities" element={<RequireAuth isLoggedIn={isLoggedIn}><CityList /></RequireAuth>} />
             <Route path="/cities/:cityId/movies" element={<RequireAuth isLoggedIn={isLoggedIn}><MovieList /></RequireAuth>} />
+            <Route path="/cities/:cityId/movies/:movieId" element={<RequireAuth isLoggedIn={isLoggedIn}><MovieDetail /></RequireAuth>} />
             <Route path="/cities/:cityId/movies/:movieId/shows" element={<RequireAuth isLoggedIn={isLoggedIn}><ShowList /></RequireAuth>} />
             <Route path="/shows/:showId/seats" element={<RequireAuth isLoggedIn={isLoggedIn}><SeatMap /></RequireAuth>} />
             <Route path="/shows/:showId/seats/proceeding" element={<RequireAuth isLoggedIn={isLoggedIn}><ProceedingToPayment /></RequireAuth>} />

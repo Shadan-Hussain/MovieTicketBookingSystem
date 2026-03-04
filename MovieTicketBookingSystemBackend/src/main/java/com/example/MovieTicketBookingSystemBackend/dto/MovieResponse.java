@@ -6,16 +6,16 @@ public class MovieResponse {
     private String name;
     private Integer durationMins;
     private String description;
-    private String posterUrl;
+    private boolean hasPoster;
     private String language;
 
     public MovieResponse(Long movieId, String name, Integer durationMins, String description,
-                         String posterUrl, String language) {
+                         boolean hasPoster, String language) {
         this.movieId = movieId;
         this.name = name;
         this.durationMins = durationMins;
         this.description = description;
-        this.posterUrl = posterUrl;
+        this.hasPoster = hasPoster;
         this.language = language;
     }
 
@@ -23,6 +23,6 @@ public class MovieResponse {
     public String getName() { return name; }
     public Integer getDurationMins() { return durationMins; }
     public String getDescription() { return description; }
-    public String getPosterUrl() { return posterUrl; }
+    public boolean isHasPoster() { return hasPoster; }
     public String getLanguage() { return language; }
 }

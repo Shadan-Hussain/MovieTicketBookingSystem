@@ -6,9 +6,11 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Admin-only endpoints for adding cities, theatres, halls, movies, seats, and shows.
@@ -61,6 +63,36 @@ public class AdminController {
     public ResponseEntity<CreatedResponse> addMovie(@Valid @RequestBody AddMovieRequest request) {
         CreatedResponse created = adminService.addMovie(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    private static final long MAX_POSTER_SIZE_BYTES = 2L * 1024 * 1024; // 2 MB
+    private static final Set<String> ALLOWED_POSTER_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+
+    @PostMapping("/movies/{movieId}/poster")
+    public ResponseEntity<Void> uploadMoviePoster(
+            @PathVariable Long movieId,
+            @RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Poster file is required");
+        }
+        if (file.getSize() > MAX_POSTER_SIZE_BYTES) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Poster size must not exceed 2 MB");
+        }
+        String contentType = file.getContentType();
+        if (contentType != null) {
+            contentType = contentType.split(";")[0].trim();
+        }
+        if (contentType == null || !ALLOWED_POSTER_TYPES.contains(contentType)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Poster must be image/jpeg, image/png, or image/webp");
+        }
+        try {
+            adminService.setMoviePoster(movieId, file.getBytes(), contentType);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to store poster: " + e.getMessage());
+        }
     }
 
     /**

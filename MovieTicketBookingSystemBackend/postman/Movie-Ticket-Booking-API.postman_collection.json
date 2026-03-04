@@ -163,10 +163,27 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Inception\",\n  \"durationMins\": 148,\n  \"description\": \"A mind-bending thriller.\",\n  \"language\": \"EN\",\n  \"posterUrl\": null\n}"
+							"raw": "{\n  \"name\": \"Inception\",\n  \"durationMins\": 148,\n  \"description\": \"A mind-bending thriller.\",\n  \"language\": \"EN\"\n}"
 						},
 						"url": "{{baseUrl}}/admin/movies",
 						"description": "Returns movie id."
+					}
+				},
+				{
+					"name": "Upload Movie Poster",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "file", "type": "file", "src": [], "description": "Image file (JPEG/PNG/WebP, max 2 MB)" }
+							]
+						},
+						"url": "{{baseUrl}}/admin/movies/1/poster",
+						"description": "Replace 1 with movie id. Upload poster image (multipart). Max 2 MB; allowed: image/jpeg, image/png, image/webp."
 					}
 				},
 				{
@@ -236,6 +253,25 @@
 					}
 				},
 				{
+					"name": "Get Movie",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": "{{baseUrl}}/movies/1",
+						"description": "Replace 1 with movie id. Returns single movie (name, durationMins, description, hasPoster, language)."
+					}
+				},
+				{
+					"name": "Get Movie Poster",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/movies/1/poster",
+						"description": "Replace 1 with movie id. Returns poster image bytes (no auth required). 404 if movie has no stored poster."
+					}
+				},
+				{
 					"name": "Get Shows",
 					"request": {
 						"method": "GET",
@@ -274,17 +310,6 @@
 						],
 						"url": "{{baseUrl}}/shows/1/seats/1/lock",
 						"description": "Replace 1/1 with showId/seatId. Lock is tied to the authenticated user. Returns 'Seat successfully locked' or 409 if already locked."
-					}
-				},
-				{
-					"name": "Unlock Seat",
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{ "key": "Authorization", "value": "Bearer {{token}}" }
-						],
-						"url": "{{baseUrl}}/shows/1/seats/1/lock",
-						"description": "Replace 1/1 with showId/seatId. Removes lock only if held by the authenticated user. Returns 'Seat unlocked' or 'Lock not held by user'."
 					}
 				},
 				{

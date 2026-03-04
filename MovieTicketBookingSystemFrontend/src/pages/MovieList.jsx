@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getMoviesByCity } from '../api';
+import { getMoviesByCity, getPosterUrl } from '../api';
 
 export default function MovieList() {
   const { cityId } = useParams();
@@ -33,17 +33,17 @@ export default function MovieList() {
             <button
               type="button"
               className="card movie-card"
-              onClick={() => navigate(`/cities/${cityId}/movies/${m.movieId}/shows`)}
+              onClick={() => navigate(`/cities/${cityId}/movies/${m.movieId}`)}
             >
               <div className="movie-poster-box">
-                {m.posterUrl && !failedPosters.has(m.movieId) ? (
-                  <img src={m.posterUrl} alt="" className="movie-poster" onError={() => onPosterError(m.movieId)} />
+                {getPosterUrl(m) && !failedPosters.has(m.movieId) ? (
+                  <img src={getPosterUrl(m)} alt="" className="movie-poster" onError={() => onPosterError(m.movieId)} />
                 ) : null}
-                <span className={`movie-poster-placeholder ${!m.posterUrl || failedPosters.has(m.movieId) ? 'visible' : ''}`} aria-hidden>No poster</span>
+                <span className={`movie-poster-placeholder ${!getPosterUrl(m) || failedPosters.has(m.movieId) ? 'visible' : ''}`} aria-hidden>No poster</span>
               </div>
               <div className="movie-card-info">
                 <strong>{m.name}</strong>
-                <span>{m.durationMins} min · {m.language}</span>
+                <span>{m.language}</span>
               </div>
             </button>
           </li>

@@ -12,7 +12,11 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
+
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 @Service
 public class MovieService {
@@ -53,8 +57,26 @@ public class MovieService {
         return movies.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    /** Returns a single movie by id, or 404 if not found. */
+    public MovieResponse getMovieById(Long movieId) {
+        Movie m = movieRepository.findById(movieId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Movie not found"));
+        return toResponse(m);
+    }
+
+    /** Returns poster image bytes and content type if the movie has a stored poster. */
+    public Optional<PosterData> getPoster(Long movieId) {
+        return movieRepository.findById(movieId)
+                .filter(m -> m.getPosterImage() != null && m.getPosterImage().length > 0)
+                .map(m -> new PosterData(m.getPosterImage(),
+                        m.getPosterContentType() != null ? m.getPosterContentType() : "image/jpeg"));
+    }
+
+    public record PosterData(byte[] bytes, String contentType) {}
+
     private MovieResponse toResponse(Movie m) {
+        boolean hasPoster = m.getPosterImage() != null && m.getPosterImage().length > 0;
         return new MovieResponse(m.getMovieId(), m.getName(), m.getDurationMins(), m.getDescription(),
-                m.getPosterUrl(), m.getLanguage());
+                hasPoster, m.getLanguage());
     }
 }

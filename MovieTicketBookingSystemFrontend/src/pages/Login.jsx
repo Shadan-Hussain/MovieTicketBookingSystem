@@ -16,6 +16,7 @@ export default function Login({ onLogin }) {
       localStorage.setItem('token', data.token);
       localStorage.setItem('userId', String(data.userId));
       localStorage.setItem('role', data.role || 'USER');
+      if (data.name) localStorage.setItem('userName', data.name);
       onLogin?.();
       navigate(data.role === 'ADMIN' ? '/manage' : '/cities');
     } catch (err) {

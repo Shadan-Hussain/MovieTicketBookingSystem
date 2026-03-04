@@ -11,7 +11,6 @@ All backend REST APIs and whether the frontend uses them.
 | `/shows?city_id=&movie_id=` | GET | Yes – `getShows()` |
 | `/shows/{showId}/seats` | GET | Yes – `getSeatsForShow()` |
 | `/shows/{showId}/seats/{seatId}/lock` | POST | Yes – `lockSeat()` (on Proceed to payment) |
-| `/shows/{showId}/seats/{seatId}/lock` | DELETE | Yes – `unlockSeat()` in api.js (e.g. for cleanup; not used on seat click) |
 | `/shows/{showId}/seats/{seatId}/payment-session` | POST | Yes – `getPaymentSession()` |
 | `/tickets?show_id=&seat_id=` | GET | Yes – `getTicket()` (single ticket after payment) |
 | `/tickets` (no params) | GET | Yes – `getMyTickets()` (My Tickets page) |

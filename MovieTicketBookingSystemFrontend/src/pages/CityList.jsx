@@ -18,8 +18,11 @@ export default function CityList() {
   if (loading) return <div className="page">Loading cities...</div>;
   if (error) return <div className="page"><div className="alert alert-error">{error}</div></div>;
 
+  const userName = localStorage.getItem('userName');
+
   return (
     <div className="page">
+      {userName && <p className="welcome-message">Welcome, {userName}</p>}
       <h1>Choose a city</h1>
       <ul className="card-list">
         {cities.map((c) => (

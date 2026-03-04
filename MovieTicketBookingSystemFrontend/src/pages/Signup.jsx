@@ -8,14 +8,20 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [alert, setAlert] = useState(null);
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+    setAlert(null);
     try {
       await signup(username, password, email, name);
-      navigate('/login');
+      setAlert({ type: 'success', text: 'Account created' });
+      setTimeout(() => {
+        setAlert(null);
+        navigate('/login');
+      }, 1500);
     } catch (err) {
       setError(err.message || 'Signup failed');
     }
@@ -24,6 +30,7 @@ export default function Signup() {
   return (
     <div className="page">
       <h1>Sign up</h1>
+      {alert && <div className={`alert alert-${alert.type}`} role="alert">{alert.text}</div>}
       {error && <div className="alert alert-error">{error}</div>}
       <form onSubmit={handleSubmit}>
         <input

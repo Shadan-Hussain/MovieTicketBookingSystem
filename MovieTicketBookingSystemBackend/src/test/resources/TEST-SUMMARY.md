@@ -82,6 +82,20 @@ So every test starts with the same data: one city, one theatre, one hall, one mo
 
 ---
 
+### GET /movies/{movieId} and poster
+
+| Test | What it checks |
+|------|-----------------|
+| **getMovieReturns200** | GET `/movies/{movieId}` (auth) returns 200 with movie details and `hasPoster` false. |
+| **getMovieReturns404WhenNotFound** | GET `/movies/99999` returns 404. |
+| **getPosterReturns404WhenNoPoster** | GET `/movies/{movieId}/poster` (no auth) returns 404 when movie has no stored poster. |
+| **uploadPosterThenGetPosterReturns200** | POST `/admin/movies/{movieId}/poster` with valid JPEG then GET poster returns 200 and same bytes. |
+| **uploadPosterEmptyFileReturns400** | POST poster with empty file returns 400. |
+| **uploadPosterWrongContentTypeReturns400** | POST poster with `text/plain` returns 400. |
+| **uploadPosterTooLargeReturns400** | POST poster with file &gt; 2 MB returns 400. |
+
+---
+
 ### GET /shows
 
 | Test | What it checks |
@@ -144,13 +158,14 @@ These check that invalid admin payloads are rejected.
 |----------|--------|----------------|
 | Cities API | 1 | List cities returns seeded city. |
 | Movies API | 2 | Movies by city; empty list when no shows. |
+| Movie by ID and poster | 7 | GET movie by id; GET poster (404/200); upload poster (success, empty file, wrong type, too large). |
 | Shows API | 1 | Shows by city and movie. |
 | Show seats | 1 | Seats for a show, with status. |
 | Lock seat | 2 | Lock succeeds; 404 for bad show/seat. |
 | Payment session | 2 | 410 without lock; 200 + session when locked. |
 | Tickets | 1 | 404 when no payment. |
 | Admin validation | 5 | Bad or missing body → 400. |
-| **Total** | **15** | Integration tests over HTTP with test DB and mocks. |
+| **Total** | **22** | Integration tests over HTTP with test DB and mocks. |
 
 ---
 

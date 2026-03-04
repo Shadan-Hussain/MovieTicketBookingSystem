@@ -22,8 +22,11 @@ public class Movie {
     @Column(name = "description", nullable = false, columnDefinition = "text")
     private String description;
 
-    @Column(name = "poster_url")
-    private String posterUrl;
+    @Column(name = "poster_image", columnDefinition = "BYTEA")
+    private byte[] posterImage;
+
+    @Column(name = "poster_content_type", length = 128)
+    private String posterContentType;
 
     @Column(name = "language", nullable = false)
     private String language;
@@ -42,8 +45,10 @@ public class Movie {
     public void setDurationMins(Integer durationMins) { this.durationMins = durationMins; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
-    public String getPosterUrl() { return posterUrl; }
-    public void setPosterUrl(String posterUrl) { this.posterUrl = posterUrl; }
+    public byte[] getPosterImage() { return posterImage; }
+    public void setPosterImage(byte[] posterImage) { this.posterImage = posterImage; }
+    public String getPosterContentType() { return posterContentType; }
+    public void setPosterContentType(String posterContentType) { this.posterContentType = posterContentType; }
     public String getLanguage() { return language; }
     public void setLanguage(String language) { this.language = language; }
     public Instant getCreatedAt() { return createdAt; }

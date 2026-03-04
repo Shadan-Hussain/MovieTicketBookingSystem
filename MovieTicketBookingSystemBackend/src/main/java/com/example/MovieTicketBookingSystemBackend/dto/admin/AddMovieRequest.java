@@ -10,7 +10,6 @@ public class AddMovieRequest {
     private Integer durationMins;
     @NotBlank(message = "description is required")
     private String description;
-    private String posterUrl;
     @NotBlank(message = "language is required")
     private String language;
 
@@ -20,8 +19,6 @@ public class AddMovieRequest {
     public void setDurationMins(Integer durationMins) { this.durationMins = durationMins; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
-    public String getPosterUrl() { return posterUrl; }
-    public void setPosterUrl(String posterUrl) { this.posterUrl = posterUrl; }
     public String getLanguage() { return language; }
     public void setLanguage(String language) { this.language = language; }
 }

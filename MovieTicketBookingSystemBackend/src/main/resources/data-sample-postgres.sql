@@ -17,9 +17,9 @@ INSERT INTO hall (hall_id, theatre_id, name, capacity, created_at) VALUES
   (1, 1, 'Screen 1', 100, NOW()),
   (2, 1, 'Screen 2', 80, NOW());
 
-INSERT INTO movie (movie_id, name, duration_mins, description, poster_url, language, release_date, created_at) VALUES
-  (1, 'Sample Movie One', 120, 'A sample film for testing.', 'https://example.com/poster1.jpg', 'Hindi', '2025-01-15', NOW()),
-  (2, 'Sample Movie Two', 105, 'Another sample film.', NULL, 'English', '2025-02-01', NOW());
+INSERT INTO movie (movie_id, name, duration_mins, description, language, release_date, created_at) VALUES
+  (1, 'Sample Movie One', 120, 'A sample film for testing.', 'Hindi', '2025-01-15', NOW()),
+  (2, 'Sample Movie Two', 105, 'Another sample film.', 'English', '2025-02-01', NOW());
 
 INSERT INTO seat (seat_id, hall_id, number, price, type, created_at) VALUES
   (1, 1, 'A1', 200, 'NORMAL', NOW()),

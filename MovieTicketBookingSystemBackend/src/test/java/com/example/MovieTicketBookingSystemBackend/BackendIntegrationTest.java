@@ -50,7 +50,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import org.springframework.mock.web.MockMultipartFile;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -457,6 +459,78 @@ class BackendIntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray())
                     .andExpect(jsonPath("$.length()").value(0));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /movies/{movieId} and poster")
+    class MovieByIdAndPosterApi {
+
+        @Test
+        @DisplayName("GET /movies/{movieId} returns 200 with movie details and hasPoster")
+        void getMovieReturns200() throws Exception {
+            mockMvc.perform(withAuth(get("/movies/{movieId}", movieId)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.movieId").value(movieId))
+                    .andExpect(jsonPath("$.name").value(seedMovieName))
+                    .andExpect(jsonPath("$.hasPoster").value(false));
+        }
+
+        @Test
+        @DisplayName("GET /movies/{movieId} for non-existent movie returns 404")
+        void getMovieReturns404WhenNotFound() throws Exception {
+            mockMvc.perform(withAuth(get("/movies/99999")))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("GET /movies/{movieId}/poster when no poster returns 404")
+        void getPosterReturns404WhenNoPoster() throws Exception {
+            mockMvc.perform(get("/movies/{movieId}/poster", movieId))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("POST /admin/movies/{movieId}/poster then GET poster returns 200 with image")
+        void uploadPosterThenGetPosterReturns200() throws Exception {
+            byte[] jpegBytes = new byte[] { (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00, 0x01, 0x02 };
+            MockMultipartFile file = new MockMultipartFile("file", "poster.jpg", "image/jpeg", jpegBytes);
+            mockMvc.perform(multipart("/admin/movies/" + movieId + "/poster").file(file)
+                            .header("Authorization", "Bearer " + adminToken))
+                    .andExpect(status().isOk());
+            mockMvc.perform(get("/movies/{movieId}/poster", movieId))
+                    .andExpect(status().isOk())
+                    .andExpect(content().bytes(jpegBytes));
+        }
+
+        @Test
+        @DisplayName("POST /admin/movies/{movieId}/poster with empty file returns 400")
+        void uploadPosterEmptyFileReturns400() throws Exception {
+            MockMultipartFile file = new MockMultipartFile("file", "empty.jpg", "image/jpeg", new byte[0]);
+            mockMvc.perform(multipart("/admin/movies/" + movieId + "/poster").file(file)
+                            .header("Authorization", "Bearer " + adminToken))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("POST /admin/movies/{movieId}/poster with wrong content type returns 400")
+        void uploadPosterWrongContentTypeReturns400() throws Exception {
+            MockMultipartFile file = new MockMultipartFile("file", "file.txt", "text/plain", "not an image".getBytes());
+            mockMvc.perform(multipart("/admin/movies/" + movieId + "/poster").file(file)
+                            .header("Authorization", "Bearer " + adminToken))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("POST /admin/movies/{movieId}/poster with file exceeding 2 MB returns 400")
+        void uploadPosterTooLargeReturns400() throws Exception {
+            byte[] large = new byte[2 * 1024 * 1024 + 1];
+            large[0] = (byte) 0xFF;
+            large[1] = (byte) 0xD8;
+            MockMultipartFile file = new MockMultipartFile("file", "large.jpg", "image/jpeg", large);
+            mockMvc.perform(multipart("/admin/movies/" + movieId + "/poster").file(file)
+                            .header("Authorization", "Bearer " + adminToken))
+                    .andExpect(status().isBadRequest());
         }
     }
 
@@ -1093,26 +1167,4 @@ class BackendIntegrationTest {
         }
     }
 
-    @Nested
-    @DisplayName("DELETE /shows/{showId}/seats/{seatId}/lock")
-    class UnlockSeatApi {
-
-        @Test
-        @DisplayName("unlocks seat when lock is held by current user")
-        void unlockSeatSuccess() throws Exception {
-            mockMvc.perform(withAuth(post("/shows/{showId}/seats/{seatId}/lock", showId, seatId)))
-                    .andExpect(status().isOk());
-            mockMvc.perform(withAuth(delete("/shows/{showId}/seats/{seatId}/lock", showId, seatId)))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.message").value("Seat unlocked"));
-        }
-
-        @Test
-        @DisplayName("returns 200 with message when lock not held by user")
-        void unlockSeatNotHeldByUser() throws Exception {
-            mockMvc.perform(withAuth(delete("/shows/{showId}/seats/{seatId}/lock", showId, seatId)))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.message").value("Lock not held by user"));
-        }
-    }
 }

@@ -50,6 +50,12 @@ export async function getMoviesByCity(cityId) {
   return res.json();
 }
 
+export async function getMovie(movieId) {
+  const res = await fetch(`${API_BASE}/movies/${movieId}`, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error('Failed to fetch movie');
+  return res.json();
+}
+
 export async function getShows(cityId, movieId) {
   const res = await fetch(`${API_BASE}/shows?city_id=${cityId}&movie_id=${movieId}`, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error('Failed to fetch shows');
@@ -70,18 +76,6 @@ export async function lockSeat(showId, seatId) {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.message || data.error || 'Lock failed');
-  }
-  return res.json();
-}
-
-export async function unlockSeat(showId, seatId) {
-  const res = await fetch(`${API_BASE}/shows/${showId}/seats/${seatId}/lock`, {
-    method: 'DELETE',
-    headers: getAuthHeaders(),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || data.error || 'Unlock failed');
   }
   return res.json();
 }
@@ -173,17 +167,40 @@ export async function adminAddHall(theatreId, name) {
   return res.json(); // { id: hallId }
 }
 
-export async function adminAddMovie(name, durationMins, description, language, posterUrl) {
+export async function adminAddMovie(name, durationMins, description, language) {
   const res = await fetch(`${API_BASE}/admin/movies`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ name, durationMins, description, language, posterUrl: posterUrl || null }),
+    body: JSON.stringify({ name, durationMins, description, language }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.message || data.error || 'Failed');
   }
   return res.json();
+}
+
+/** Upload poster image (multipart). Call after adding a movie with the returned id. */
+export async function uploadMoviePoster(movieId, file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const token = getToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(`${API_BASE}/admin/movies/${movieId}/poster`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || data.error || 'Upload failed');
+  }
+}
+
+/** Returns URL for poster when stored in DB (BYTEA). */
+export function getPosterUrl(movie) {
+  if (movie?.hasPoster && movie?.movieId) return `${API_BASE}/movies/${movie.movieId}/poster`;
+  return null;
 }
 
 export async function adminAddSeats(hallId, rows, cols, premiumRowStart, premiumRowEnd, priceNormal, pricePremium) {

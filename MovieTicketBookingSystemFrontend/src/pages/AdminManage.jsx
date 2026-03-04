@@ -8,6 +8,7 @@ import {
   adminAddTheatre,
   adminAddHall,
   adminAddMovie,
+  uploadMoviePoster,
   adminAddSeats,
   adminAddShow,
 } from '../api';
@@ -18,11 +19,12 @@ export default function AdminManage() {
   const [theatres, setTheatres] = useState([]);
   const [halls, setHalls] = useState([]);
   const [movies, setMovies] = useState([]);
+  const [posterFile, setPosterFile] = useState(null);
   const [form, setForm] = useState({
     city: { name: '', stateCode: '' },
     theatre: { cityId: '', name: '', address: '' },
     hall: { theatreId: '', name: '', rows: '', cols: '', premiumRowStart: '', premiumRowEnd: '', priceNormal: '100', pricePremium: '200' },
-    movie: { name: '', durationHours: '0', durationMinutes: '0', description: '', language: '', posterUrl: '' },
+    movie: { name: '', durationHours: '0', durationMinutes: '0', description: '', language: '' },
     show: { movieId: '', hallId: '', startTime: '', endTime: '' },
   });
 
@@ -98,14 +100,17 @@ export default function AdminManage() {
       return;
     }
     try {
-      await adminAddMovie(
+      const created = await adminAddMovie(
         form.movie.name,
         totalMins,
         form.movie.description,
-        form.movie.language,
-        form.movie.posterUrl || null
+        form.movie.language
       );
-      setForm((f) => ({ ...f, movie: { name: '', durationHours: '0', durationMinutes: '0', description: '', language: '', posterUrl: '' } }));
+      if (posterFile) {
+        await uploadMoviePoster(created.id, posterFile);
+        setPosterFile(null);
+      }
+      setForm((f) => ({ ...f, movie: { name: '', durationHours: '0', durationMinutes: '0', description: '', language: '' } }));
       showSuccess();
       getAdminMovies().then(setMovies).catch(() => {});
     } catch (err) {
@@ -293,11 +298,13 @@ export default function AdminManage() {
             onChange={(e) => setForm((f) => ({ ...f, movie: { ...f.movie, language: e.target.value } }))}
             required
           />
+          <label>Poster image (optional, max 2 MB, JPEG/PNG/WebP)</label>
           <input
-            placeholder="Poster URL (optional)"
-            value={form.movie.posterUrl}
-            onChange={(e) => setForm((f) => ({ ...f, movie: { ...f.movie, posterUrl: e.target.value } }))}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => setPosterFile(e.target.files?.[0] ?? null)}
           />
+          {posterFile && <span className="muted">Selected: {posterFile.name}</span>}
           <button type="submit">Add movie</button>
         </form>
       </section>

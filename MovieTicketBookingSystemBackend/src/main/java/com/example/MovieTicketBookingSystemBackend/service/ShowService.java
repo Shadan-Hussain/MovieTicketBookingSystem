@@ -57,6 +57,9 @@ public class ShowService {
     }
 
     private ShowResponse toResponse(Show s) {
-        return new ShowResponse(s.getShowId(), s.getMovieId(), s.getHallId(), s.getStartTime(), s.getEndTime());
+        String theatreName = s.getHall() != null && s.getHall().getTheatre() != null ? s.getHall().getTheatre().getName() : null;
+        String hallName = s.getHall() != null ? s.getHall().getName() : null;
+        return new ShowResponse(s.getShowId(), s.getMovieId(), s.getHallId(), theatreName, hallName,
+                s.getStartTime(), s.getEndTime());
     }
 }

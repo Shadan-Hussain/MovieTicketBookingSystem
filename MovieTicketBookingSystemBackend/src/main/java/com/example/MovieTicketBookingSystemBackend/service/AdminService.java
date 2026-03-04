@@ -145,10 +145,18 @@ public class AdminService {
         movie.setName(req.getName());
         movie.setDurationMins(req.getDurationMins());
         movie.setDescription(req.getDescription());
-        movie.setPosterUrl(req.getPosterUrl());
         movie.setLanguage(req.getLanguage());
         movie.setCreatedAt(Instant.now());
         return new CreatedResponse(movieRepository.save(movie).getMovieId());
+    }
+
+    @Transactional
+    public void setMoviePoster(Long movieId, byte[] imageBytes, String contentType) {
+        Movie movie = movieRepository.findById(movieId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Movie not found"));
+        movie.setPosterImage(imageBytes);
+        movie.setPosterContentType(contentType != null && !contentType.isBlank() ? contentType : "image/jpeg");
+        movieRepository.save(movie);
     }
 
     /**
