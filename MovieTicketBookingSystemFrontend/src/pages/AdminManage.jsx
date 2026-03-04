@@ -154,226 +154,276 @@ export default function AdminManage() {
       <section className="admin-section">
         <h2>Add city</h2>
         <form onSubmit={handleCity}>
-          <input
-            placeholder="Name"
-            value={form.city.name}
-            onChange={(e) => setForm((f) => ({ ...f, city: { ...f.city, name: e.target.value } }))}
-            required
-          />
-          <input
-            placeholder="State code"
-            value={form.city.stateCode}
-            onChange={(e) => setForm((f) => ({ ...f, city: { ...f.city, stateCode: e.target.value } }))}
-            required
-          />
+          <div className="form-row">
+            <label>Name</label>
+            <input
+              value={form.city.name}
+              onChange={(e) => setForm((f) => ({ ...f, city: { ...f.city, name: e.target.value } }))}
+              required
+            />
+          </div>
+          <div className="form-row">
+            <label>State code</label>
+            <input
+              value={form.city.stateCode}
+              onChange={(e) => setForm((f) => ({ ...f, city: { ...f.city, stateCode: e.target.value } }))}
+              required
+            />
+          </div>
           <button type="submit">Add city</button>
         </form>
       </section>
       <section className="admin-section">
         <h2>Add theatre</h2>
         <form onSubmit={handleTheatre}>
-          <select
-            value={form.theatre.cityId}
-            onChange={(e) => setForm((f) => ({ ...f, theatre: { ...f.theatre, cityId: e.target.value } }))}
-            required
-          >
-            <option value="">Select city</option>
-            {cities.map((c) => (
-              <option key={c.cityId} value={c.cityId}>{c.name}</option>
-            ))}
-          </select>
-          <input
-            placeholder="Name"
-            value={form.theatre.name}
-            onChange={(e) => setForm((f) => ({ ...f, theatre: { ...f.theatre, name: e.target.value } }))}
-            required
-          />
-          <input
-            placeholder="Address"
-            value={form.theatre.address}
-            onChange={(e) => setForm((f) => ({ ...f, theatre: { ...f.theatre, address: e.target.value } }))}
-            required
-          />
+          <div className="form-row">
+            <label>City</label>
+            <select
+              value={form.theatre.cityId}
+              onChange={(e) => setForm((f) => ({ ...f, theatre: { ...f.theatre, cityId: e.target.value } }))}
+              required
+            >
+              <option value="">Select city</option>
+              {cities.map((c) => (
+                <option key={c.cityId} value={c.cityId}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-row">
+            <label>Name</label>
+            <input
+              value={form.theatre.name}
+              onChange={(e) => setForm((f) => ({ ...f, theatre: { ...f.theatre, name: e.target.value } }))}
+              required
+            />
+          </div>
+          <div className="form-row">
+            <label>Address</label>
+            <input
+              value={form.theatre.address}
+              onChange={(e) => setForm((f) => ({ ...f, theatre: { ...f.theatre, address: e.target.value } }))}
+              required
+            />
+          </div>
           <button type="submit">Add theatre</button>
         </form>
       </section>
       <section className="admin-section">
         <h2>Add hall (and seats)</h2>
         <form onSubmit={handleHall}>
-          <select
-            value={form.hall.theatreId}
-            onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, theatreId: e.target.value } }))}
-            required
-          >
-            <option value="">Select theatre</option>
-            {theatres.map((t) => (
-              <option key={t.id} value={t.id}>{t.label}</option>
-            ))}
-          </select>
-          <input
-            placeholder="Hall name"
-            value={form.hall.name}
-            onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, name: e.target.value } }))}
-            required
-          />
-          <input
-            type="number"
-            placeholder="Rows"
-            value={form.hall.rows}
-            onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, rows: e.target.value } }))}
-            required
-          />
-          <input
-            type="number"
-            placeholder="Cols"
-            value={form.hall.cols}
-            onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, cols: e.target.value } }))}
-            required
-          />
-          <input
-            type="number"
-            placeholder="Premium row start (0-based, optional)"
-            value={form.hall.premiumRowStart}
-            onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, premiumRowStart: e.target.value } }))}
-          />
-          <input
-            type="number"
-            placeholder="Premium row end (optional)"
-            value={form.hall.premiumRowEnd}
-            onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, premiumRowEnd: e.target.value } }))}
-          />
-          <input
-            type="number"
-            placeholder="Price normal (optional)"
-            value={form.hall.priceNormal}
-            onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, priceNormal: e.target.value } }))}
-          />
-          <input
-            type="number"
-            placeholder="Price premium (optional)"
-            value={form.hall.pricePremium}
-            onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, pricePremium: e.target.value } }))}
-          />
+          <div className="form-row">
+            <label>Theatre</label>
+            <select
+              value={form.hall.theatreId}
+              onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, theatreId: e.target.value } }))}
+              required
+            >
+              <option value="">Select theatre</option>
+              {theatres.map((t) => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-row">
+            <label>Hall name</label>
+            <input
+              value={form.hall.name}
+              onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, name: e.target.value } }))}
+              required
+            />
+          </div>
+          <div className="form-row">
+            <label>Rows</label>
+            <input
+              type="number"
+              value={form.hall.rows}
+              onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, rows: e.target.value } }))}
+              required
+            />
+          </div>
+          <div className="form-row">
+            <label>Cols</label>
+            <input
+              type="number"
+              value={form.hall.cols}
+              onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, cols: e.target.value } }))}
+              required
+            />
+          </div>
+          <div className="form-row">
+            <label>Premium row start (0-based, optional)</label>
+            <input
+              type="number"
+              value={form.hall.premiumRowStart}
+              onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, premiumRowStart: e.target.value } }))}
+            />
+          </div>
+          <div className="form-row">
+            <label>Premium row end (optional)</label>
+            <input
+              type="number"
+              value={form.hall.premiumRowEnd}
+              onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, premiumRowEnd: e.target.value } }))}
+            />
+          </div>
+          <div className="form-row">
+            <label>Price normal (₹, optional)</label>
+            <input
+              type="number"
+              min="0"
+              placeholder="Rupees"
+              value={form.hall.priceNormal}
+              onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, priceNormal: e.target.value } }))}
+            />
+          </div>
+          <div className="form-row">
+            <label>Price premium (₹, optional)</label>
+            <input
+              type="number"
+              min="0"
+              placeholder="Rupees"
+              value={form.hall.pricePremium}
+              onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, pricePremium: e.target.value } }))}
+            />
+          </div>
           <button type="submit">Add hall</button>
         </form>
       </section>
       <section className="admin-section">
         <h2>Add movie</h2>
         <form onSubmit={handleMovie}>
-          <input
-            placeholder="Name"
-            value={form.movie.name}
-            onChange={(e) => setForm((f) => ({ ...f, movie: { ...f.movie, name: e.target.value } }))}
-            required
-          />
-          <label>Duration (hh:mm)</label>
-          <div className="duration-inputs">
+          <div className="form-row">
+            <label>Name</label>
             <input
-              type="number"
-              min="0"
-              max="23"
-              placeholder="HH"
-              value={form.movie.durationHours}
-              onChange={(e) => setForm((f) => ({ ...f, movie: { ...f.movie, durationHours: e.target.value } }))}
-            />
-            <span className="duration-sep">:</span>
-            <input
-              type="number"
-              min="0"
-              max="59"
-              placeholder="MM"
-              value={form.movie.durationMinutes}
-              onChange={(e) => setForm((f) => ({ ...f, movie: { ...f.movie, durationMinutes: e.target.value } }))}
+              value={form.movie.name}
+              onChange={(e) => setForm((f) => ({ ...f, movie: { ...f.movie, name: e.target.value } }))}
+              required
             />
           </div>
-          <input
-            placeholder="Description"
-            value={form.movie.description}
-            onChange={(e) => setForm((f) => ({ ...f, movie: { ...f.movie, description: e.target.value } }))}
-            required
-          />
-          <input
-            placeholder="Language"
-            value={form.movie.language}
-            onChange={(e) => setForm((f) => ({ ...f, movie: { ...f.movie, language: e.target.value } }))}
-            required
-          />
-          <label>Poster image (optional, max 2 MB, JPEG/PNG/WebP)</label>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => setPosterFile(e.target.files?.[0] ?? null)}
-          />
-          {posterFile && <span className="muted">Selected: {posterFile.name}</span>}
+          <div className="form-row">
+            <label>Duration (hh:mm)</label>
+            <div className="duration-inputs">
+              <input
+                type="number"
+                min="0"
+                max="23"
+                placeholder="HH"
+                value={form.movie.durationHours}
+                onChange={(e) => setForm((f) => ({ ...f, movie: { ...f.movie, durationHours: e.target.value } }))}
+              />
+              <span className="duration-sep">:</span>
+              <input
+                type="number"
+                min="0"
+                max="59"
+                placeholder="MM"
+                value={form.movie.durationMinutes}
+                onChange={(e) => setForm((f) => ({ ...f, movie: { ...f.movie, durationMinutes: e.target.value } }))}
+              />
+            </div>
+          </div>
+          <div className="form-row">
+            <label>Description</label>
+            <input
+              value={form.movie.description}
+              onChange={(e) => setForm((f) => ({ ...f, movie: { ...f.movie, description: e.target.value } }))}
+              required
+            />
+          </div>
+          <div className="form-row">
+            <label>Language</label>
+            <input
+              value={form.movie.language}
+              onChange={(e) => setForm((f) => ({ ...f, movie: { ...f.movie, language: e.target.value } }))}
+              required
+            />
+          </div>
+          <div className="form-row">
+            <label>Poster image (optional, max 2 MB, JPEG/PNG/WebP)</label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => setPosterFile(e.target.files?.[0] ?? null)}
+            />
+          </div>
+          {posterFile && <p className="muted">Selected: {posterFile.name}</p>}
           <button type="submit">Add movie</button>
         </form>
       </section>
       <section className="admin-section">
         <h2>Add show</h2>
         <form onSubmit={handleShow}>
-          <select
-            value={form.show.movieId}
-            onChange={(e) => {
-              const movieId = e.target.value;
-              setForm((f) => {
-                const next = { ...f, show: { ...f.show, movieId } };
-                if (f.show.startTime) {
-                  const sel = movies.find((m) => String(m.id) === String(movieId));
-                  const movieMins = sel?.durationMins != null ? Number(sel.durationMins) : 0;
-                  const d = new Date(f.show.startTime);
-                  d.setMinutes(d.getMinutes() + movieMins + 30);
-                  next.show.endTime = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          <div className="form-row">
+            <label>Movie</label>
+            <select
+              value={form.show.movieId}
+              onChange={(e) => {
+                const movieId = e.target.value;
+                setForm((f) => {
+                  const next = { ...f, show: { ...f.show, movieId } };
+                  if (f.show.startTime) {
+                    const sel = movies.find((m) => String(m.id) === String(movieId));
+                    const movieMins = sel?.durationMins != null ? Number(sel.durationMins) : 0;
+                    const d = new Date(f.show.startTime);
+                    d.setMinutes(d.getMinutes() + movieMins + 30);
+                    next.show.endTime = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                  }
+                  return next;
+                });
+              }}
+              required
+            >
+              <option value="">Select movie</option>
+              {movies.map((m) => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-row">
+            <label>Hall</label>
+            <select
+              value={form.show.hallId}
+              onChange={(e) => setForm((f) => ({ ...f, show: { ...f.show, hallId: e.target.value } }))}
+              required
+            >
+              <option value="">Select hall (theatre / hall)</option>
+              {halls.map((h) => (
+                <option key={h.id} value={h.id}>{h.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-row">
+            <label>Start time</label>
+            <input
+              type="datetime-local"
+              value={form.show.startTime}
+              onChange={(e) => {
+                const start = e.target.value;
+                if (!start) {
+                  setForm((f) => ({ ...f, show: { ...f.show, startTime: '', endTime: '' } }));
+                  return;
                 }
-                return next;
-              });
-            }}
-            required
-          >
-            <option value="">Select movie</option>
-            {movies.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}</option>
-            ))}
-          </select>
-          <select
-            value={form.show.hallId}
-            onChange={(e) => setForm((f) => ({ ...f, show: { ...f.show, hallId: e.target.value } }))}
-            required
-          >
-            <option value="">Select hall (theatre / hall)</option>
-            {halls.map((h) => (
-              <option key={h.id} value={h.id}>{h.label}</option>
-            ))}
-          </select>
-          <label>Start time</label>
-          <input
-            type="datetime-local"
-            placeholder="Start time"
-            value={form.show.startTime}
-            onChange={(e) => {
-              const start = e.target.value;
-              if (!start) {
-                setForm((f) => ({ ...f, show: { ...f.show, startTime: '', endTime: '' } }));
-                return;
-              }
-              const sel = movies.find((m) => String(m.id) === String(form.show.movieId));
-              const movieMins = sel?.durationMins != null ? Number(sel.durationMins) : 0;
-              const totalMins = movieMins + 30;
-              const d = new Date(start);
-              d.setMinutes(d.getMinutes() + totalMins);
-              const end = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-              setForm((f) => ({ ...f, show: { ...f.show, startTime: start, endTime: end } }));
-            }}
-            required
-          />
-          <label>End time (start + movie duration + 30 min)</label>
-          <input
-            type="datetime-local"
-            placeholder="End time"
-            value={form.show.endTime}
-            readOnly
-            tabIndex={-1}
-            required
-          />
+                const sel = movies.find((m) => String(m.id) === String(form.show.movieId));
+                const movieMins = sel?.durationMins != null ? Number(sel.durationMins) : 0;
+                const totalMins = movieMins + 30;
+                const d = new Date(start);
+                d.setMinutes(d.getMinutes() + totalMins);
+                const end = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                setForm((f) => ({ ...f, show: { ...f.show, startTime: start, endTime: end } }));
+              }}
+              required
+            />
+          </div>
+          <div className="form-row">
+            <label>End time (start + movie duration + 30 min)</label>
+            <input
+              type="datetime-local"
+              value={form.show.endTime}
+              readOnly
+              tabIndex={-1}
+              required
+            />
+          </div>
           <button type="submit">Add show</button>
         </form>
         <p className="muted">Use ISO format for times (e.g. 2025-03-15T18:00). Backend expects OffsetDateTime.</p>

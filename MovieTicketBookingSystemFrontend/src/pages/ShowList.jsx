@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getShows } from '../api';
+import BackButton from '../components/BackButton';
+import { formatDateDDMMYYYY } from '../utils/dateFormat';
 
 function parseDT(s) {
   if (!s) return { date: '', dateKey: '', time: '' };
   const d = new Date(s);
   const dateKey = d.toISOString().slice(0, 10);
   return {
-    date: d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+    date: formatDateDDMMYYYY(d),
     dateKey,
     time: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     sortKey: d.getTime(),
@@ -62,13 +64,46 @@ export default function ShowList() {
     if (dateOptions.length && !selectedDateKey) setSelectedDateKey(dateOptions[0].dateKey);
   }, [dateOptions, selectedDateKey]);
 
-  if (loading) return <div className="page">Loading shows...</div>;
-  if (error) return <div className="page"><div className="alert alert-error">{error}</div></div>;
-  if (shows.length === 0) return <div className="page"><p className="muted">No shows available.</p></div>;
+  if (loading) {
+    return (
+      <div className="page">
+        <div className="page-header-with-back">
+          <BackButton to={`/cities/${cityId}/movies/${movieId}`} />
+          <h1>Choose a show</h1>
+        </div>
+        <p>Loading shows...</p>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="page">
+        <div className="page-header-with-back">
+          <BackButton to={`/cities/${cityId}/movies/${movieId}`} />
+          <h1>Choose a show</h1>
+        </div>
+        <div className="alert alert-error">{error}</div>
+      </div>
+    );
+  }
+  if (shows.length === 0) {
+    return (
+      <div className="page">
+        <div className="page-header-with-back">
+          <BackButton to={`/cities/${cityId}/movies/${movieId}`} />
+          <h1>Choose a show</h1>
+        </div>
+        <p className="muted">No shows available.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page show-list-page">
-      <h1>Choose a show</h1>
+      <div className="page-header-with-back">
+        <BackButton to={`/cities/${cityId}/movies/${movieId}`} />
+        <h1>Choose a show</h1>
+      </div>
       <div className="show-dates-row" role="tablist" aria-label="Select date">
         <div className="show-dates-scroll">
           {dateOptions.map(({ dateKey, label }) => (
@@ -98,7 +133,6 @@ export default function ShowList() {
                   onClick={() => navigate(`/shows/${s.showId}/seats`)}
                 >
                   <span className="show-time">{s.time}</span>
-                  <span className="show-time-end">{s.endInfo.time}</span>
                 </button>
               ))}
             </div>

@@ -83,7 +83,8 @@ public class StripeService {
 
         Seat seat = seatRepository.findById(seatId)
                 .orElseThrow(() -> new IllegalArgumentException("Seat not found: " + seatId));
-        long amountCents = seat.getPrice() != null ? seat.getPrice() : 100L;
+        long amountRupees = seat.getPrice() != null ? seat.getPrice() : 100L;
+        long amountPaise = amountRupees * 100L;
         String productName = "Seat #" + seat.getNumber() + " (Show " + showId + ")";
 
         SessionCreateParams.LineItem.PriceData.ProductData productData =
@@ -93,8 +94,8 @@ public class StripeService {
 
         SessionCreateParams.LineItem.PriceData priceData =
                 SessionCreateParams.LineItem.PriceData.builder()
-                        .setCurrency("usd")
-                        .setUnitAmount(amountCents)
+                        .setCurrency("inr")
+                        .setUnitAmount(amountPaise)
                         .setProductData(productData)
                         .build();
 
@@ -122,8 +123,8 @@ public class StripeService {
         txn.setSeat(seatRepository.getReferenceById(seatId));
         txn.setUser(userRepository.getReferenceById(userId));
         txn.setStripeSessionId(session.getId());
-        txn.setAmount(amountCents);
-        txn.setCurrency("usd");
+        txn.setAmount(amountRupees);
+        txn.setCurrency("inr");
         txn.setStatus(Transaction.STATUS_PENDING);
         txn.setCreatedAt(Instant.now());
         txn.setUpdatedAt(Instant.now());
@@ -241,12 +242,12 @@ public class StripeService {
             log.info("Payment success: transactionId={} showId={} seatId={} sessionId={}", txn.getTransactionId(), showId, seatId, sessionId);
 
             // FOR TESTING: delay before inserting ticket so frontend "redirecting..." polling can be verified. Remove in production.
-//            try {
-//                Thread.sleep(30000);
-//            } catch (InterruptedException e) {
-//                Thread.currentThread().interrupt();
-//                log.warn("Ticket delay interrupted", e);
-//            }
+            try {
+                Thread.sleep(8000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Ticket delay interrupted", e);
+            }
 
             if (ticketRepository.findByTransaction_TransactionId(txn.getTransactionId()).isEmpty()) {
                 Ticket ticket = new Ticket();

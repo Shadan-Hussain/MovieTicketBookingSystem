@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getTicket } from '../api';
+import { formatShowTimingDateAndStart, formatShowDuration } from '../utils/dateFormat';
 
 export default function PaymentSuccess() {
   const [ticket, setTicket] = useState(null);
@@ -48,8 +49,15 @@ export default function PaymentSuccess() {
             <h2>Your ticket</h2>
             <p><strong>Ticket ID:</strong> {ticket.ticketId}</p>
             <p><strong>Show ID:</strong> {ticket.showId}</p>
-            <p><strong>Seat ID:</strong> {ticket.seatId}</p>
+            <p><strong>Seat number:</strong> {ticket.seatNumber ?? ticket.seatId ?? '—'}</p>
             <p><strong>Transaction ID:</strong> {ticket.transactionId}</p>
+            {ticket.theatreName && <p><strong>Theatre:</strong> {ticket.theatreName}</p>}
+            {ticket.theatreAddress && <p><strong>Address:</strong> {ticket.theatreAddress}</p>}
+            {ticket.hallName && <p><strong>Hall:</strong> {ticket.hallName}</p>}
+            {ticket.showStartTime && <p><strong>Show timing:</strong> {formatShowTimingDateAndStart(ticket.showStartTime)}</p>}
+            {formatShowDuration(ticket.showStartTime, ticket.showEndTime) !== '—' && (
+              <p><strong>Show duration:</strong> {formatShowDuration(ticket.showStartTime, ticket.showEndTime)}</p>
+            )}
           </div>
           <p style={{ marginTop: '1rem' }}>
             <Link to="/cities" className="btn-primary">Go back to main page</Link>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getMyTransactions } from '../api';
+import { formatDateTimeDDMMYYYY } from '../utils/dateFormat';
 
 export default function TransactionHistory() {
   const [transactions, setTransactions] = useState([]);
@@ -27,9 +28,9 @@ export default function TransactionHistory() {
             <li key={t.transactionId} className="transaction-card">
               <p><strong>Transaction ID:</strong> {t.transactionId}</p>
               <p><strong>Show ID:</strong> {t.showId} · <strong>Seat ID:</strong> {t.seatId}</p>
-              <p><strong>Amount:</strong> {t.amount / 100} {t.currency?.toUpperCase()}</p>
+              <p><strong>Amount:</strong> ₹{t.amount}</p>
               <p><strong>Status:</strong> {t.status}</p>
-              <p><strong>Created:</strong> {t.createdAt ? new Date(t.createdAt).toLocaleString() : '—'}</p>
+              <p><strong>Created:</strong> {formatDateTimeDDMMYYYY(t.createdAt)}</p>
             </li>
           ))}
         </ul>

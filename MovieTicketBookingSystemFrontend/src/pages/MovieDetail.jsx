@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getMovie, getPosterUrl } from '../api';
+import BackButton from '../components/BackButton';
 
 export default function MovieDetail() {
   const { cityId, movieId } = useParams();
@@ -17,12 +18,33 @@ export default function MovieDetail() {
       .finally(() => setLoading(false));
   }, [movieId]);
 
-  if (loading) return <div className="page">Loading...</div>;
-  if (error) return <div className="page"><div className="alert alert-error">{error}</div><button type="button" onClick={() => navigate(-1)}>Go back</button></div>;
+  if (loading) {
+    return (
+      <div className="page">
+        <div className="page-header-with-back">
+          <BackButton to={`/cities/${cityId}/movies`} />
+        </div>
+        <p>Loading...</p>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="page">
+        <div className="page-header-with-back">
+          <BackButton to={`/cities/${cityId}/movies`} />
+        </div>
+        <div className="alert alert-error">{error}</div>
+      </div>
+    );
+  }
   if (!movie) return null;
 
   return (
     <div className="page movie-detail-page">
+      <div className="page-header-with-back">
+        <BackButton to={`/cities/${cityId}/movies`} />
+      </div>
       <div className="movie-detail-layout">
         <div className="movie-detail-poster-wrap">
           {getPosterUrl(movie) && !failedPoster ? (

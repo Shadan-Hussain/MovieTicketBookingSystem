@@ -170,16 +170,13 @@ form input[type="datetime-local"] { min-width: 180px; }
   object-fit: cover;
 }
 .movie-poster-placeholder {
-  display: none;
   position: absolute;
   inset: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
   color: #888;
-}
-.movie-poster-placeholder.visible {
-  display: flex;
 }
 .movie-card-info { flex: 1; min-width: 0; }
 .movie-card-info strong { display: block; margin-bottom: 0.25rem; }
@@ -211,16 +208,84 @@ form input[type="datetime-local"] { min-width: 180px; }
 
 .admin-subheading { font-size: 1rem; margin: 1rem 0 0.5rem; font-weight: 600; }
 
-/* Seats */
-.seat-legend {
+/* Page header with back button */
+.page-header-with-back {
   display: flex;
-  gap: 1.5rem;
+  align-items: center;
+  gap: 0.75rem;
   margin-bottom: 1rem;
-  flex-wrap: wrap;
 }
-.seat-legend .seat-box { margin-right: 0.35rem; }
-.seat-grid { margin: 1rem 0; }
-.seat-row { display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap; }
+.page-header-with-back h1 { margin: 0; }
+.page-header-with-back--centered {
+  position: relative;
+  min-height: 2.25rem;
+}
+.page-header-with-back--centered .back-button {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.page-header-with-back--centered .page-header-center {
+  width: 100%;
+  text-align: center;
+}
+.page-header-with-back--centered .page-header-center h1 { margin: 0; }
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid #555;
+  background: #1a1a1a;
+  color: inherit;
+  text-decoration: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.back-button:hover { border-color: #646cff; background: #2a2a2a; }
+.back-icon { display: block; }
+
+/* Seats – centered layout */
+.seat-layout-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 1rem 0;
+}
+.seat-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+.seat-section-divider {
+  width: 100%;
+  max-width: 320px;
+  margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+.seat-section-divider::before {
+  content: '';
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, #555, transparent);
+}
+.seat-section-divider--first::before { display: none; }
+.seat-section-divider--first { margin-top: 0; }
+.seat-section-divider-label {
+  font-size: 0.85rem;
+  color: #aaa;
+}
+.seat-row { display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap; justify-content: center; }
 .seat-box {
   width: 36px;
   height: 36px;
@@ -232,12 +297,23 @@ form input[type="datetime-local"] { min-width: 180px; }
   border-radius: 4px;
   border: 1px solid #555;
 }
-.seat-box.available { background: #2a4a2a; color: #afa; }
-.seat-box.locked { background: #4a4a2a; color: #aa8; cursor: not-allowed; }
-.seat-box.booked { background: #4a2a2a; color: #a88; cursor: not-allowed; }
-.seat-box.selected { background: #2a2a4a; color: #aaf; border-color: #66f; }
+.seat-box.available { background: #2a5a2a; color: #afa; }
+.seat-box.unavailable { background: #6a2a2a; color: #faa; cursor: not-allowed; }
+.seat-box.selected { background: #2a2a5a; color: #aaf; border-color: #66f; }
 .seat-box:disabled { cursor: not-allowed; opacity: 0.9; }
+.screen-indicator {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 4px;
+  text-align: center;
+  width: 100%;
+  max-width: 280px;
+}
+.screen-label { font-size: 0.85rem; color: #888; letter-spacing: 0.15em; }
 .proceed-row { margin-top: 1.5rem; }
+.proceed-row--center { display: flex; justify-content: center; }
 .btn-primary { background: #3636c4; color: #fff; padding: 0.6em 1.5em; }
 .btn-primary:hover { background: #4545d4; }
 
@@ -276,11 +352,29 @@ form input[type="datetime-local"] { min-width: 180px; }
   border-bottom: 1px solid #333;
 }
 .admin-manage .admin-section form { flex-direction: column; align-items: flex-start; }
-.admin-manage form input { margin: 0.25rem 0; }
+.admin-manage .form-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  width: 100%;
+}
+.admin-manage .form-row label {
+  min-width: 10rem;
+  flex-shrink: 0;
+}
+.admin-manage .form-row input,
+.admin-manage .form-row select {
+  min-width: 12rem;
+  flex: 1;
+  max-width: 320px;
+}
+.admin-manage form input { margin: 0; }
 .admin-manage form input[placeholder="Poster URL (optional)"] { max-width: 100%; width: 100%; min-width: 300px; }
-.admin-manage .duration-inputs { display: flex; align-items: center; gap: 0.25rem; margin: 0.25rem 0; }
+.admin-manage .duration-inputs { display: flex; align-items: center; gap: 0.25rem; margin: 0; }
 .admin-manage .duration-inputs input { width: 4rem; }
 .admin-manage .duration-sep { font-weight: 600; }
+.admin-manage form button { margin-top: 0.5rem; }
 
 @media (prefers-color-scheme: light) {
   :root { color: #213547; background-color: #f5f5f5; }
@@ -291,10 +385,14 @@ form input[type="datetime-local"] { min-width: 180px; }
   .card-list .card:hover { background: #f0f0f0; }
   .card-list .card span { color: #555; }
   form input { background: #fff; border-color: #ccc; color: #111; }
+  .back-button { background: #e8e8e8; border-color: #ccc; color: #111; }
+  .back-button:hover { background: #f0f0f0; }
+  .seat-section-divider-label { color: #555; }
   .seat-box.available { background: #c8e6c9; color: #1b5e20; }
-  .seat-box.locked { background: #fff9c4; color: #f57f17; }
-  .seat-box.booked { background: #ffcdd2; color: #b71c1c; }
+  .seat-box.unavailable { background: #ffcdd2; color: #b71c1c; }
   .seat-box.selected { background: #c5cae9; color: #1a237e; }
+  .screen-indicator { background: #e0e0e0; border-color: #ccc; }
+  .screen-label { color: #666; }
   .ticket-card { background: #fff; border-color: #ccc; color: #111; }
   .transaction-history .transaction-card {
     background: #f0f4f8;

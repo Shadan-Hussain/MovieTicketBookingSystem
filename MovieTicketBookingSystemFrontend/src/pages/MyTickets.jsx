@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getMyTickets } from '../api';
+import { formatShowTimingDateAndStart, formatShowDuration } from '../utils/dateFormat';
 
 export default function MyTickets() {
   const [tickets, setTickets] = useState([]);
@@ -27,9 +28,15 @@ export default function MyTickets() {
             <li key={t.ticketId} className="ticket-card">
               <p><strong>Ticket ID:</strong> {t.ticketId}</p>
               <p><strong>Show ID:</strong> {t.showId}</p>
-              <p><strong>Seat ID:</strong> {t.seatId}</p>
+              <p><strong>Seat number:</strong> {t.seatNumber ?? t.seatId ?? '—'}</p>
               <p><strong>Transaction ID:</strong> {t.transactionId}</p>
-              <p><strong>Booked at:</strong> {t.createdAt ? new Date(t.createdAt).toLocaleString() : '—'}</p>
+              {t.theatreName && <p><strong>Theatre:</strong> {t.theatreName}</p>}
+              {t.theatreAddress && <p><strong>Address:</strong> {t.theatreAddress}</p>}
+              {t.hallName && <p><strong>Hall:</strong> {t.hallName}</p>}
+              {t.showStartTime && <p><strong>Show timing:</strong> {formatShowTimingDateAndStart(t.showStartTime)}</p>}
+              {formatShowDuration(t.showStartTime, t.showEndTime) !== '—' && (
+                <p><strong>Show duration:</strong> {formatShowDuration(t.showStartTime, t.showEndTime)}</p>
+              )}
             </li>
           ))}
         </ul>

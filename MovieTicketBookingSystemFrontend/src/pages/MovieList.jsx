@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getMoviesByCity, getPosterUrl } from '../api';
+import BackButton from '../components/BackButton';
 
 export default function MovieList() {
   const { cityId } = useParams();
@@ -21,12 +22,35 @@ export default function MovieList() {
       .finally(() => setLoading(false));
   }, [cityId]);
 
-  if (loading) return <div className="page">Loading movies...</div>;
-  if (error) return <div className="page"><div className="alert alert-error">{error}</div></div>;
+  if (loading) {
+    return (
+      <div className="page">
+        <div className="page-header-with-back">
+          <BackButton to="/cities" />
+          <h1>Choose a movie</h1>
+        </div>
+        <p>Loading movies...</p>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="page">
+        <div className="page-header-with-back">
+          <BackButton to="/cities" />
+          <h1>Choose a movie</h1>
+        </div>
+        <div className="alert alert-error">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
-      <h1>Choose a movie</h1>
+      <div className="page-header-with-back">
+        <BackButton to="/cities" />
+        <h1>Choose a movie</h1>
+      </div>
       <ul className="card-list movie-cards">
         {movies.map((m) => (
           <li key={m.movieId}>
@@ -38,8 +62,9 @@ export default function MovieList() {
               <div className="movie-poster-box">
                 {getPosterUrl(m) && !failedPosters.has(m.movieId) ? (
                   <img src={getPosterUrl(m)} alt="" className="movie-poster" onError={() => onPosterError(m.movieId)} />
-                ) : null}
-                <span className={`movie-poster-placeholder ${!getPosterUrl(m) || failedPosters.has(m.movieId) ? 'visible' : ''}`} aria-hidden>No poster</span>
+                ) : (
+                  <span className="movie-poster-placeholder" aria-hidden>No poster</span>
+                )}
               </div>
               <div className="movie-card-info">
                 <strong>{m.name}</strong>

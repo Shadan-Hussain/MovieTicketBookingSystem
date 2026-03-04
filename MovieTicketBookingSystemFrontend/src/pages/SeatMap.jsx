@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSeatsForShow } from '../api';
+import BackButton from '../components/BackButton';
 
 /**
  * Flow: (1) Load seats once from backend, store locally.
@@ -40,7 +41,17 @@ export default function SeatMap() {
     navigate(`/shows/${showId}/seats/proceeding`, { state: { seatId: selectedSeatId }, replace: true });
   }
 
-  if (loading) return <div className="page">Loading seats...</div>;
+  if (loading) {
+    return (
+      <div className="page">
+        <div className="page-header-with-back">
+          <BackButton />
+          <h1>Choose a seat</h1>
+        </div>
+        <p>Loading seats...</p>
+      </div>
+    );
+  }
 
   const rows = {};
   seats.forEach((s) => {
@@ -50,40 +61,85 @@ export default function SeatMap() {
   });
   const rowNums = Object.keys(rows).map(Number).sort((a, b) => a - b);
 
+  const premiumPrice = seats.find((s) => s.type === 'PREMIUM')?.price;
+  const normalPrice = seats.find((s) => s.type === 'NORMAL')?.price;
+
+  let lastType = null;
+  const rowNumsWithDivider = [];
+  for (const r of rowNums) {
+    const rowSeats = rows[r];
+    const rowType = rowSeats?.[0]?.type ?? 'NORMAL';
+    if (lastType != null && rowType !== lastType) {
+      const nextLabel = rowType === 'PREMIUM' ? 'Premium' : 'Normal';
+      const nextPrice = rowType === 'PREMIUM' ? premiumPrice : normalPrice;
+      rowNumsWithDivider.push({ divider: true, sectionLabel: nextLabel, sectionPrice: nextPrice });
+    }
+    rowNumsWithDivider.push({ divider: false, rowNum: r });
+    lastType = rowType;
+  }
+
+  const firstRowType = rowNums.length ? (rows[rowNums[0]]?.[0]?.type ?? 'NORMAL') : null;
+  const firstSectionLabel = firstRowType === 'PREMIUM' ? 'Premium' : 'Normal';
+  const firstSectionPrice = firstRowType === 'PREMIUM' ? premiumPrice : normalPrice;
+
   return (
-    <div className="page">
-      <h1>Choose a seat (one only)</h1>
-      {error && <div className="alert alert-error">{error}</div>}
-      <div className="seat-legend">
-        <span><span className="seat-box available" /> Available</span>
-        <span><span className="seat-box locked" /> Locked</span>
-        <span><span className="seat-box booked" /> Booked</span>
-        <span><span className="seat-box selected" /> Selected</span>
+    <div className="page seat-map-page">
+      <div className="page-header-with-back page-header-with-back--centered">
+        <BackButton />
+        <div className="page-header-center">
+          <h1>Choose a seat</h1>
+        </div>
       </div>
-      <div className="seat-grid">
-        {rowNums.map((r) => (
-          <div key={r} className="seat-row">
-            {rows[r].sort((a, b) => (a.colNum ?? 0) - (b.colNum ?? 0)).map((s) => {
-              const isUnselectable = s.status === 'LOCKED' || s.status === 'BOOKED';
-              const isSelected = selectedSeatId === s.seatId;
+      {error && <div className="alert alert-error">{error}</div>}
+      <div className="seat-layout-center">
+        <div className="seat-grid">
+          {firstRowType != null && (
+            <div className="seat-section-divider seat-section-divider--first">
+              <span className="seat-section-divider-label">
+                {firstSectionPrice != null ? `${firstSectionLabel} — ₹${firstSectionPrice}` : firstSectionLabel}
+              </span>
+            </div>
+          )}
+          {rowNumsWithDivider.map((item, idx) => {
+            if (item.divider) {
+              const label = item.sectionPrice != null
+                ? `${item.sectionLabel} — ₹${item.sectionPrice}`
+                : item.sectionLabel;
               return (
-                <button
-                  key={s.seatId}
-                  type="button"
-                  className={`seat-box ${s.status?.toLowerCase() ?? 'available'} ${isSelected ? 'selected' : ''}`}
-                  disabled={isUnselectable}
-                  title={s.number}
-                  onClick={() => handleSelectSeat(s)}
-                >
-                  {s.number}
-                </button>
+                <div key={`div-${idx}`} className="seat-section-divider">
+                  <span className="seat-section-divider-label">{label}</span>
+                </div>
               );
-            })}
+            }
+          const r = item.rowNum;
+          return (
+            <div key={r} className="seat-row">
+              {rows[r].sort((a, b) => (a.colNum ?? 0) - (b.colNum ?? 0)).map((s) => {
+                const isUnselectable = s.status === 'LOCKED' || s.status === 'BOOKED';
+                const isSelected = selectedSeatId === s.seatId;
+                return (
+                  <button
+                    key={s.seatId}
+                    type="button"
+                    className={`seat-box ${s.status === 'AVAILABLE' ? 'available' : 'unavailable'} ${isSelected ? 'selected' : ''}`}
+                    disabled={isUnselectable}
+                    title={`${s.number}${s.price != null ? ` — ₹${s.price}` : ''}`}
+                    onClick={() => handleSelectSeat(s)}
+                  >
+                    {s.number}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+          <div className="screen-indicator" aria-hidden>
+            <span className="screen-label">Screen</span>
           </div>
-        ))}
+        </div>
       </div>
       {selectedSeatId && (
-        <div className="proceed-row">
+        <div className="proceed-row proceed-row--center">
           <button type="button" className="btn-primary" onClick={handleProceed}>
             Proceed to payment
           </button>

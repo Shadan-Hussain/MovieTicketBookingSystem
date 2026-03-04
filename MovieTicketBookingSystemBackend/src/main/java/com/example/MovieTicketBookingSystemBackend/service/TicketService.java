@@ -1,6 +1,10 @@
 package com.example.MovieTicketBookingSystemBackend.service;
 
 import com.example.MovieTicketBookingSystemBackend.dto.TicketResponse;
+import com.example.MovieTicketBookingSystemBackend.model.Hall;
+import com.example.MovieTicketBookingSystemBackend.model.Seat;
+import com.example.MovieTicketBookingSystemBackend.model.Show;
+import com.example.MovieTicketBookingSystemBackend.model.Theatre;
 import com.example.MovieTicketBookingSystemBackend.model.Ticket;
 import com.example.MovieTicketBookingSystemBackend.model.Transaction;
 import com.example.MovieTicketBookingSystemBackend.repository.TicketRepository;
@@ -46,6 +50,17 @@ public class TicketService {
         var txn = t.getTransaction();
         Long showId = txn != null ? txn.getShowId() : null;
         Long seatId = txn != null ? txn.getSeatId() : null;
-        return new TicketResponse(t.getTicketId(), showId, seatId, t.getTransactionId(), t.getCreatedAt());
+        Show show = txn != null ? txn.getShow() : null;
+        Seat seat = txn != null ? txn.getSeat() : null;
+        String seatNumber = seat != null ? seat.getNumber() : null;
+        Hall hall = show != null ? show.getHall() : null;
+        Theatre theatre = hall != null ? hall.getTheatre() : null;
+        String theatreName = theatre != null ? theatre.getName() : null;
+        String theatreAddress = theatre != null ? theatre.getAddress() : null;
+        String hallName = hall != null ? hall.getName() : null;
+        String showStartTime = show != null && show.getStartTime() != null ? show.getStartTime().toString() : null;
+        String showEndTime = show != null && show.getEndTime() != null ? show.getEndTime().toString() : null;
+        return new TicketResponse(t.getTicketId(), showId, seatId, seatNumber, t.getTransactionId(),
+                theatreName, theatreAddress, hallName, showStartTime, showEndTime, t.getCreatedAt());
     }
 }
