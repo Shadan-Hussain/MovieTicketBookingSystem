@@ -52,8 +52,14 @@ public class ShowController {
         return ResponseEntity.ok(showService.getShowsByCityAndMovie(city_id, movie_id));
     }
 
+    @GetMapping("/{showId}")
+    public ResponseEntity<ShowResponse> getShowById(@PathVariable Long showId) {
+        return ResponseEntity.ok(showService.getShowById(showId));
+    }
+
     @GetMapping("/{showId}/seats")
     public ResponseEntity<List<ShowSeatResponse>> getSeatsForShow(@PathVariable Long showId) {
+        showService.validateShowStartInFuture(showId);
         return ResponseEntity.ok(showService.getSeatsForShow(showId));
     }
 
@@ -62,13 +68,14 @@ public class ShowController {
             @PathVariable Long showId,
             @PathVariable Long seatId,
             @RequestAttribute("userId") Long userId) {
+        showService.validateShowStartInFuture(showId);
         var showSeat = showSeatRepository.findByShow_ShowIdAndSeat_SeatId(showId, seatId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ShowSeat not found"));
         if (!ShowSeat.STATUS_AVAILABLE.equals(showSeat.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Seat is not available");
         }
         if (!seatLockService.setLockIfAbsent(showId, seatId, userId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Seat already locked");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Seat not available at the moment");
         }
         return ResponseEntity.ok(new MessageResponse("Seat successfully locked"));
     }
@@ -78,6 +85,7 @@ public class ShowController {
             @PathVariable Long showId,
             @PathVariable Long seatId,
             @RequestAttribute("userId") Long userId) {
+        showService.validateShowStartInFuture(showId);
         if (!seatLockService.isLockedBy(showId, seatId, userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Lock expired or held by another user; please lock the seat again");
         }

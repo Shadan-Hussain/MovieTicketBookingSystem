@@ -9,8 +9,11 @@ import com.example.MovieTicketBookingSystemBackend.repository.SeatRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.ShowRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.ShowSeatRepository;
 import com.example.MovieTicketBookingSystemBackend.service.SeatLockService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -32,8 +35,37 @@ public class ShowService {
     }
 
     public List<ShowResponse> getShowsByCityAndMovie(Long cityId, Long movieId) {
+        OffsetDateTime now = OffsetDateTime.now();
         List<Show> shows = showRepository.findByCityIdAndMovieId(cityId, movieId);
-        return shows.stream().map(this::toResponse).collect(Collectors.toList());
+        return shows.stream()
+                .filter(s -> s.getStartTime() != null && s.getStartTime().isAfter(now))
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns show details by id (for seat map page). Validates show is in the future. Includes movie name.
+     */
+    public ShowResponse getShowById(Long showId) {
+        validateShowStartInFuture(showId);
+        Show show = showRepository.findById(showId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Show not found"));
+        ShowResponse response = toResponse(show);
+        if (show.getMovie() != null) {
+            response.setMovieName(show.getMovie().getName());
+        }
+        return response;
+    }
+
+    /**
+     * Throws if the show is not found or its start time is not after the current time.
+     */
+    public void validateShowStartInFuture(Long showId) {
+        Show show = showRepository.findById(showId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Show not found"));
+        if (show.getStartTime() == null || !show.getStartTime().isAfter(OffsetDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Show ended or already started");
+        }
     }
 
     public List<ShowSeatResponse> getSeatsForShow(Long showId) {

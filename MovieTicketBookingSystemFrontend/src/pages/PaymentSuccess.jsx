@@ -28,8 +28,9 @@ export default function PaymentSuccess() {
             sessionStorage.removeItem('payment_seatId');
             return;
           }
-        } catch {
-          // ignore
+        } catch (err) {
+          setMessage(err.message || 'Failed to load ticket');
+          return;
         }
         await new Promise((r) => setTimeout(r, 2000));
       }
@@ -64,7 +65,7 @@ export default function PaymentSuccess() {
           </p>
         </>
       )}
-      {!ticket && message && (message.includes('not ready') || message.includes('Missing')) && (
+      {!ticket && message && (
         <p style={{ marginTop: '1rem' }}>
           <Link to="/cities" className="btn-primary">Go back to main page</Link>
         </p>

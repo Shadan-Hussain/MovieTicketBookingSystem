@@ -396,6 +396,10 @@ export default function AdminManage() {
             <label>Start time</label>
             <input
               type="datetime-local"
+              min={(() => {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+              })()}
               value={form.show.startTime}
               onChange={(e) => {
                 const start = e.target.value;

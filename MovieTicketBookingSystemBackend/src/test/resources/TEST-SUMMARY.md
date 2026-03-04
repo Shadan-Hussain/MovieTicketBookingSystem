@@ -101,6 +101,17 @@ So every test starts with the same data: one city, one theatre, one hall, one mo
 | Test | What it checks |
 |------|-----------------|
 | **getShowsByCityAndMovie** | GET `/shows?city_id=...&movie_id=...` returns 200 and a list that includes our seeded show (correct `showId`). |
+| **getShowsEmptyForNonExistent** | Returns empty list for non-existent city or movie. |
+
+---
+
+### GET /shows/{showId}
+
+| Test | What it checks |
+|------|-----------------|
+| **getShowByIdReturns200WithDetails** | GET `/shows/{showId}` returns 200 with showId, movieName, theatreName, hallName, startTime, endTime. |
+| **getShowByIdReturns404WhenNotFound** | GET `/shows/99999` returns 404. |
+| **getShowByIdReturns400WhenShowAlreadyStarted** | For a show with start time in the past, returns 400 with message "Show ended or already started". |
 
 ---
 
@@ -109,6 +120,8 @@ So every test starts with the same data: one city, one theatre, one hall, one mo
 | Test | What it checks |
 |------|-----------------|
 | **getSeatsForShow** | GET `/shows/{showId}/seats` returns 200, an array of seats, and the first seat has `status` "AVAILABLE" and a `seatId`. |
+| **getSeatsForShowReflectsLockedStatus** | After locking a seat, GET seats returns that seat with status "LOCKED". |
+| **getSeatsForShowReturns400WhenShowAlreadyStarted** | For a show with start time in the past, returns 400 with message "Show ended or already started". |
 
 ---
 
@@ -117,7 +130,9 @@ So every test starts with the same data: one city, one theatre, one hall, one mo
 | Test | What it checks |
 |------|-----------------|
 | **lockSeat** | POST `/shows/{showId}/seats/{seatId}/lock` for our seeded show/seat returns **200**. The fake Redis stores the lock. |
+| **lockSeatUnauthorized** | POST lock without JWT returns 401. |
 | **lockSeatNotFound** | POST lock for non-existent show/seat (e.g. 99999/99999) returns **404**. |
+| **lockSeatAlreadyLocked** | POST lock again for same seat returns **409** (Seat not available at the moment). |
 
 ---
 
@@ -134,7 +149,12 @@ So every test starts with the same data: one city, one theatre, one hall, one mo
 
 | Test | What it checks |
 |------|-----------------|
-| **getTicketNotFound** | GET `/tickets?show_id=...&seat_id=...` for a show/seat that has **no** successful payment returns **404**. (We don’t simulate webhook/payment success in these tests.) |
+| **getTicketNotFound** | GET `/tickets?show_id=...&seat_id=...` for a show/seat that has **no** successful payment returns **404**. |
+| **getTicketReturns400WhenTransactionFailed** | When the user has a transaction for this show+seat with status FAILED, returns 400 with message "payment failed". |
+| **getTicketReturns400WhenTransactionRefundInitiated** | When the user has a transaction for this show+seat with status REFUND_INITIATED, returns 400 with message "Ticket creation failed, refund initiated". |
+| **getTicketUnauthorized** | GET ticket without JWT returns 401. |
+| **getMyTicketsList** | GET `/tickets` (no params) returns list of current user's tickets. |
+| **getTicketReturns404WhenTicketBelongsToAnotherUser** | GET ticket for show+seat where another user has the ticket returns 404. |
 
 ---
 
@@ -149,6 +169,7 @@ These check that invalid admin payloads are rejected.
 | **addTheatreMissingCityId** | POST `/admin/theatres` with only `name`, no `cityId` → **400**. |
 | **addSeatsInvalidRows** | POST `/admin/halls/{id}/seats` with `rows: 0` → **400**. |
 | **addShowMissingFields** | POST `/admin/shows` with `{}` (no movieId, hallId, startTime, endTime) → **400**. |
+| **addShowWithStartTimeInPastReturns400** | POST `/admin/shows` with startTime in the past → **400** "Show start time must be in the future". |
 
 ---
 
@@ -159,13 +180,14 @@ These check that invalid admin payloads are rejected.
 | Cities API | 1 | List cities returns seeded city. |
 | Movies API | 2 | Movies by city; empty list when no shows. |
 | Movie by ID and poster | 7 | GET movie by id; GET poster (404/200); upload poster (success, empty file, wrong type, too large). |
-| Shows API | 1 | Shows by city and movie. |
-| Show seats | 1 | Seats for a show, with status. |
-| Lock seat | 2 | Lock succeeds; 404 for bad show/seat. |
-| Payment session | 2 | 410 without lock; 200 + session when locked. |
-| Tickets | 1 | 404 when no payment. |
-| Admin validation | 5 | Bad or missing body → 400. |
-| **Total** | **22** | Integration tests over HTTP with test DB and mocks. |
+| Shows API | 2 | Shows by city and movie; empty for non-existent. |
+| Show by ID | 3 | GET show by id (movieName, etc.); 404; 400 when show already started. |
+| Show seats | 3 | Seats for show; locked status; 400 when show already started. |
+| Lock seat | 4 | Lock succeeds; 401; 404; 409 when already locked. |
+| Payment session | 3 | 403 without lock; 200 when locked; 403 when other user's lock. |
+| Tickets | 6 | 404 when no ticket; 400 FAILED/REFUND_INITIATED; 401; list; 404 other user. |
+| Admin validation | 24+ | Bad body, duplicates, show overlap, past start time, etc. |
+| **Total** | **~70** | Integration tests over HTTP with test DB and mocks. |
 
 ---
 

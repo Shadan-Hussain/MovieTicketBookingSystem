@@ -7,6 +7,7 @@ public class ShowResponse {
     private Long showId;
     private Long movieId;
     private Long hallId;
+    private String movieName;
     private String theatreName;
     private String hallName;
     private OffsetDateTime startTime;
@@ -17,6 +18,7 @@ public class ShowResponse {
         this.showId = showId;
         this.movieId = movieId;
         this.hallId = hallId;
+        this.movieName = null;
         this.theatreName = theatreName;
         this.hallName = hallName;
         this.startTime = startTime;
@@ -26,6 +28,8 @@ public class ShowResponse {
     public Long getShowId() { return showId; }
     public Long getMovieId() { return movieId; }
     public Long getHallId() { return hallId; }
+    public String getMovieName() { return movieName; }
+    public void setMovieName(String movieName) { this.movieName = movieName; }
     public String getTheatreName() { return theatreName; }
     public String getHallName() { return hallName; }
     public OffsetDateTime getStartTime() { return startTime; }

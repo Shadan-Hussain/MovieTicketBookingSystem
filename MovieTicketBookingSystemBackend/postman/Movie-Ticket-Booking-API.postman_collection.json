@@ -215,7 +215,7 @@
 							"raw": "{\n  \"movieId\": 1,\n  \"hallId\": 1,\n  \"startTime\": \"2025-03-15T18:00:00+05:30\",\n  \"endTime\": \"2025-03-15T20:30:00+05:30\"\n}"
 						},
 						"url": "{{baseUrl}}/admin/shows",
-						"description": "Replace movieId/hallId. Use ISO-8601 for startTime/endTime. Times must not overlap other shows in same hall. Returns show id."
+						"description": "Replace movieId/hallId. Use ISO-8601 for startTime/endTime. Start time must be in the future (400 otherwise). Times must not overlap other shows in same hall. Returns show id."
 					}
 				}
 			]
@@ -287,7 +287,18 @@
 								{ "key": "movie_id", "value": "1" }
 							]
 						},
-						"description": "Shows for the given city and movie."
+						"description": "Shows for the given city and movie. Only returns shows whose start time is in the future."
+					}
+				},
+				{
+					"name": "Get Show by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": "{{baseUrl}}/shows/1",
+						"description": "Replace 1 with show id. Returns show details (showId, movieName, theatreName, hallName, startTime, endTime) for the seat map page. 400 'Show ended or already started' if show has already started or ended. 404 if show not found."
 					}
 				},
 				{
@@ -298,7 +309,7 @@
 							{ "key": "Authorization", "value": "Bearer {{token}}" }
 						],
 						"url": "{{baseUrl}}/shows/1/seats",
-						"description": "Replace 1 with show id. Returns seats with status (AVAILABLE/LOCKED/BOOKED) from DB and Redis."
+						"description": "Replace 1 with show id. Returns seats with status (AVAILABLE/LOCKED/BOOKED) from DB and Redis. 400 'Show ended or already started' if show has already started or ended."
 					}
 				},
 				{
@@ -309,7 +320,7 @@
 							{ "key": "Authorization", "value": "Bearer {{token}}" }
 						],
 						"url": "{{baseUrl}}/shows/1/seats/1/lock",
-						"description": "Replace 1/1 with showId/seatId. Lock is tied to the authenticated user. Returns 'Seat successfully locked' or 409 if already locked."
+						"description": "Replace 1/1 with showId/seatId. Lock is tied to the authenticated user. Returns 'Seat successfully locked' or 409 with 'Seat not available at the moment' if seat is locked."
 					}
 				},
 				{
@@ -350,7 +361,7 @@
 								{ "key": "seat_id", "value": "1" }
 							]
 						},
-						"description": "Returns ticket only if it belongs to the authenticated user. 404 otherwise."
+						"description": "Returns ticket if the user has a successful payment for this show+seat. 400 'payment failed' if the user's latest transaction for this show+seat is FAILED. 400 'Ticket creation failed, refund initiated' if transaction is REFUND_INITIATED. 404 if no ticket or transaction for this user."
 					}
 				},
 				{

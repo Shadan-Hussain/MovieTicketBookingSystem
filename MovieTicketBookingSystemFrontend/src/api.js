@@ -62,9 +62,21 @@ export async function getShows(cityId, movieId) {
   return res.json();
 }
 
+export async function getShow(showId) {
+  const res = await fetch(`${API_BASE}/shows/${showId}`, { headers: getAuthHeaders() });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || data.error || 'Failed to fetch show');
+  }
+  return res.json();
+}
+
 export async function getSeatsForShow(showId) {
   const res = await fetch(`${API_BASE}/shows/${showId}/seats`, { headers: getAuthHeaders() });
-  if (!res.ok) throw new Error('Failed to fetch seats');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || data.error || 'Failed to fetch seats');
+  }
   return res.json();
 }
 
@@ -94,7 +106,10 @@ export async function getPaymentSession(showId, seatId) {
 
 export async function getTicket(showId, seatId) {
   const res = await fetch(`${API_BASE}/tickets?show_id=${showId}&seat_id=${seatId}`, { headers: getAuthHeaders() });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || data.error || 'Failed to fetch ticket');
+  }
   return res.json();
 }
 

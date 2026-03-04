@@ -9,8 +9,10 @@ import com.example.MovieTicketBookingSystemBackend.model.Ticket;
 import com.example.MovieTicketBookingSystemBackend.model.Transaction;
 import com.example.MovieTicketBookingSystemBackend.repository.TicketRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.TransactionRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,11 +37,22 @@ public class TicketService {
                 .collect(Collectors.toList());
     }
 
-    /** Find ticket by show and seat (successful transaction). Returns ticket only if it belongs to the given user. */
+    /** Find ticket by show and seat (successful transaction). Returns ticket only if it belongs to the given user.
+     * If the user has a transaction in FAILED or REFUND_INITIATED state for this show+seat, throws with appropriate message. */
     public Optional<TicketResponse> getTicket(Long showId, Long seatId, Long userId) {
         if (userId == null) {
             return Optional.empty();
         }
+        transactionRepository.findFirstByShow_ShowIdAndSeat_SeatIdOrderByCreatedAtDesc(showId, seatId)
+                .filter(txn -> txn.getUserId() != null && txn.getUserId().equals(userId))
+                .ifPresent(txn -> {
+                    if (Transaction.STATUS_FAILED.equals(txn.getStatus())) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "payment failed");
+                    }
+                    if (Transaction.STATUS_REFUND_INITIATED.equals(txn.getStatus())) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ticket creation failed, refund initiated");
+                    }
+                });
         return transactionRepository.findByShow_ShowIdAndSeat_SeatIdAndStatus(showId, seatId, Transaction.STATUS_SUCCESS)
                 .filter(txn -> txn.getUserId() != null && txn.getUserId().equals(userId))
                 .flatMap(txn -> ticketRepository.findByTransaction_TransactionId(txn.getTransactionId())

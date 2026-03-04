@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -223,6 +224,9 @@ public class AdminService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Movie not found"));
         if (req.getStartTime() == null || req.getEndTime() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Start time and end time are required");
+        }
+        if (!req.getStartTime().isAfter(OffsetDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Show start time must be in the future");
         }
         if (!req.getEndTime().isAfter(req.getStartTime())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End time must be after start time");

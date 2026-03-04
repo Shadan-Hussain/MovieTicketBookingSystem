@@ -9,12 +9,12 @@ import com.example.MovieTicketBookingSystemBackend.dto.admin.AddMovieRequest;
 import com.example.MovieTicketBookingSystemBackend.dto.admin.AddSeatsRequest;
 import com.example.MovieTicketBookingSystemBackend.dto.admin.AddShowRequest;
 import com.example.MovieTicketBookingSystemBackend.dto.admin.AddTheatreRequest;
-import com.example.MovieTicketBookingSystemBackend.config.AdminRoleFilter;
-import com.example.MovieTicketBookingSystemBackend.config.JwtAuthFilter;
+import com.example.MovieTicketBookingSystemBackend.model.Show;
 import com.example.MovieTicketBookingSystemBackend.model.Ticket;
 import com.example.MovieTicketBookingSystemBackend.model.Transaction;
 import com.example.MovieTicketBookingSystemBackend.model.User;
 import com.example.MovieTicketBookingSystemBackend.repository.ShowRepository;
+import com.example.MovieTicketBookingSystemBackend.repository.ShowSeatRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.SeatRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.TicketRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.TransactionRepository;
@@ -39,6 +39,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+
+import com.example.MovieTicketBookingSystemBackend.config.AdminRoleFilter;
+import com.example.MovieTicketBookingSystemBackend.config.JwtAuthFilter;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -82,6 +85,8 @@ class BackendIntegrationTest {
 
     @Autowired
     private ShowRepository showRepository;
+    @Autowired
+    private ShowSeatRepository showSeatRepository;
     @Autowired
     private SeatRepository seatRepository;
     @Autowired
@@ -255,7 +260,7 @@ class BackendIntegrationTest {
     }
 
     private Long createShow(Long movieId, Long hallId) throws Exception {
-        OffsetDateTime start = OffsetDateTime.now().plusHours(1);
+        OffsetDateTime start = OffsetDateTime.now().plusDays(1);
         OffsetDateTime end = start.plusMinutes(178);
         AddShowRequest req = new AddShowRequest();
         req.setMovieId(movieId);
@@ -271,11 +276,11 @@ class BackendIntegrationTest {
         return objectMapper.readTree(body).get("id").asLong();
     }
 
-    private Long getFirstSeatIdForShow(Long showId) throws Exception {
-        String body = mockMvc.perform(withAuth(get("/shows/{showId}/seats", showId)))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-        return objectMapper.readTree(body).get(0).get("seatId").asLong();
+    private Long getFirstSeatIdForShow(Long showId) {
+        return showSeatRepository.findByShow_ShowIdOrderBySeat_SeatId(showId).stream()
+                .findFirst()
+                .map(ss -> ss.getSeatId())
+                .orElseThrow(() -> new IllegalStateException("No seats for show " + showId));
     }
 
     @Nested
@@ -444,7 +449,7 @@ class BackendIntegrationTest {
         @Test
         @DisplayName("returns movies that have shows in the given city when authenticated")
         void getMoviesByCity() throws Exception {
-            mockMvc.perform(withAuth(get("/movies").param("city_id", String.valueOf(cityId))))
+            mockMvc.perform(withAuth(get("/movies?city_id=" + cityId)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray())
                     .andExpect(jsonPath("$[?(@.name == '" + seedMovieName + "')]").exists())
@@ -455,7 +460,7 @@ class BackendIntegrationTest {
         @DisplayName("returns empty list for city with no shows")
         void getMoviesByCityEmpty() throws Exception {
             Long otherCityId = createCity("Pune_" + System.nanoTime());
-            mockMvc.perform(withAuth(get("/movies").param("city_id", String.valueOf(otherCityId))))
+            mockMvc.perform(withAuth(get("/movies?city_id=" + otherCityId)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray())
                     .andExpect(jsonPath("$.length()").value(0));
@@ -541,9 +546,7 @@ class BackendIntegrationTest {
         @Test
         @DisplayName("returns shows for city and movie when authenticated")
         void getShowsByCityAndMovie() throws Exception {
-            mockMvc.perform(withAuth(get("/shows")
-                            .param("city_id", String.valueOf(cityId))
-                            .param("movie_id", String.valueOf(movieId))))
+            mockMvc.perform(withAuth(get("/shows?city_id=" + cityId + "&movie_id=" + movieId)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray())
                     .andExpect(jsonPath("$[?(@.showId == " + showId + ")]").exists());
@@ -552,14 +555,55 @@ class BackendIntegrationTest {
         @Test
         @DisplayName("returns empty list for non-existent city or movie")
         void getShowsEmptyForNonExistent() throws Exception {
-            mockMvc.perform(withAuth(get("/shows").param("city_id", "99999").param("movie_id", String.valueOf(movieId))))
+            mockMvc.perform(withAuth(get("/shows?city_id=99999&movie_id=" + movieId)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray())
                     .andExpect(jsonPath("$.length()").value(0));
-            mockMvc.perform(withAuth(get("/shows").param("city_id", String.valueOf(cityId)).param("movie_id", "99999")))
+            mockMvc.perform(withAuth(get("/shows?city_id=" + cityId + "&movie_id=99999")))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray())
                     .andExpect(jsonPath("$.length()").value(0));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /shows/{showId}")
+    class ShowByIdApi {
+
+        @Test
+        @DisplayName("returns 200 with show details including movieName when authenticated")
+        void getShowByIdReturns200WithDetails() throws Exception {
+            mockMvc.perform(withAuth(get("/shows/{showId}", showId)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.showId").value(showId))
+                    .andExpect(jsonPath("$.movieName").value(seedMovieName))
+                    .andExpect(jsonPath("$.theatreName").exists())
+                    .andExpect(jsonPath("$.hallName").exists())
+                    .andExpect(jsonPath("$.startTime").exists())
+                    .andExpect(jsonPath("$.endTime").exists());
+        }
+
+        @Test
+        @DisplayName("returns 404 for non-existent show")
+        void getShowByIdReturns404WhenNotFound() throws Exception {
+            mockMvc.perform(withAuth(get("/shows/99999")))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("returns 400 when show has already started or ended")
+        void getShowByIdReturns400WhenShowAlreadyStarted() throws Exception {
+            Show existing = showRepository.findById(showId).orElseThrow();
+            Show pastShow = new Show();
+            pastShow.setMovie(existing.getMovie());
+            pastShow.setHall(existing.getHall());
+            pastShow.setStartTime(OffsetDateTime.now().minusHours(1));
+            pastShow.setEndTime(pastShow.getStartTime().plusMinutes(120));
+            pastShow.setCreatedAt(Instant.now());
+            pastShow = showRepository.save(pastShow);
+            mockMvc.perform(withAuth(get("/shows/{showId}", pastShow.getShowId())))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Show ended or already started"));
         }
     }
 
@@ -588,6 +632,23 @@ class BackendIntegrationTest {
                     .andExpect(jsonPath("$").isArray())
                     .andExpect(jsonPath("$[0].seatId").value(seatId))
                     .andExpect(jsonPath("$[0].status").value("LOCKED"));
+        }
+
+        @Test
+        @DisplayName("returns 400 when show has already started or ended")
+        void getSeatsForShowReturns400WhenShowAlreadyStarted() throws Exception {
+            Show existing = showRepository.findById(showId).orElseThrow();
+            Show pastShow = new Show();
+            pastShow.setMovie(existing.getMovie());
+            pastShow.setHall(existing.getHall());
+            pastShow.setStartTime(OffsetDateTime.now().minusHours(1));
+            pastShow.setEndTime(pastShow.getStartTime().plusMinutes(120));
+            pastShow.setCreatedAt(Instant.now());
+            pastShow = showRepository.save(pastShow);
+            Long pastShowId = pastShow.getShowId();
+            mockMvc.perform(withAuth(get("/shows/{showId}/seats", pastShowId)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Show ended or already started"));
         }
     }
 
@@ -670,18 +731,14 @@ class BackendIntegrationTest {
         @Test
         @DisplayName("returns 404 when no successful payment for show-seat")
         void getTicketNotFound() throws Exception {
-            mockMvc.perform(withAuth(get("/tickets")
-                            .param("show_id", String.valueOf(showId))
-                            .param("seat_id", String.valueOf(seatId))))
+            mockMvc.perform(withAuth(get("/tickets?show_id=" + showId + "&seat_id=" + seatId)))
                     .andExpect(status().isNotFound());
         }
 
         @Test
         @DisplayName("returns 401 without JWT")
         void getTicketUnauthorized() throws Exception {
-            mockMvc.perform(get("/tickets")
-                            .param("show_id", String.valueOf(showId))
-                            .param("seat_id", String.valueOf(seatId)))
+            mockMvc.perform(get("/tickets?show_id=" + showId + "&seat_id=" + seatId))
                     .andExpect(status().isUnauthorized());
         }
 
@@ -711,6 +768,42 @@ class BackendIntegrationTest {
                     .andExpect(jsonPath("$[0].ticketId").exists())
                     .andExpect(jsonPath("$[0].showId").value(showId))
                     .andExpect(jsonPath("$[0].seatId").value(seatId));
+        }
+
+        @Test
+        @DisplayName("returns 400 when user's transaction for show-seat is FAILED")
+        void getTicketReturns400WhenTransactionFailed() throws Exception {
+            Transaction txn = new Transaction();
+            txn.setShow(showRepository.getReferenceById(showId));
+            txn.setSeat(seatRepository.getReferenceById(seatId));
+            txn.setUser(userRepository.findByUsername("testuser").orElseThrow());
+            txn.setStatus(Transaction.STATUS_FAILED);
+            txn.setAmount(100L);
+            txn.setCurrency("inr");
+            txn.setStripeSessionId("failed-session-" + System.nanoTime());
+            txn.setCreatedAt(Instant.now());
+            transactionRepository.save(txn);
+            mockMvc.perform(withAuth(get("/tickets?show_id=" + showId + "&seat_id=" + seatId)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("payment failed"));
+        }
+
+        @Test
+        @DisplayName("returns 400 when user's transaction for show-seat is REFUND_INITIATED")
+        void getTicketReturns400WhenTransactionRefundInitiated() throws Exception {
+            Transaction txn = new Transaction();
+            txn.setShow(showRepository.getReferenceById(showId));
+            txn.setSeat(seatRepository.getReferenceById(seatId));
+            txn.setUser(userRepository.findByUsername("testuser").orElseThrow());
+            txn.setStatus(Transaction.STATUS_REFUND_INITIATED);
+            txn.setAmount(100L);
+            txn.setCurrency("inr");
+            txn.setStripeSessionId("refund-session-" + System.nanoTime());
+            txn.setCreatedAt(Instant.now());
+            transactionRepository.save(txn);
+            mockMvc.perform(withAuth(get("/tickets?show_id=" + showId + "&seat_id=" + seatId)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Ticket creation failed, refund initiated"));
         }
 
         @Test
@@ -744,9 +837,7 @@ class BackendIntegrationTest {
             ticket.setCreatedAt(Instant.now());
             ticketRepository.save(ticket);
 
-            mockMvc.perform(withAuth(get("/tickets")
-                            .param("show_id", String.valueOf(showId))
-                            .param("seat_id", String.valueOf(seatId))))
+            mockMvc.perform(withAuth(get("/tickets?show_id=" + showId + "&seat_id=" + seatId)))
                     .andExpect(status().isNotFound());
         }
     }
@@ -797,7 +888,7 @@ class BackendIntegrationTest {
         @Test
         @DisplayName("success returns 200 with message and session_id")
         void redirectSuccess() throws Exception {
-            mockMvc.perform(get("/redirect/success").param("session_id", "cs_abc123"))
+            mockMvc.perform(get("/redirect/success?session_id=cs_abc123"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("Payment succeeded"))
                     .andExpect(jsonPath("$.sessionId").value("cs_abc123"));
@@ -956,6 +1047,23 @@ class BackendIntegrationTest {
         }
 
         @Test
+        @DisplayName("POST /admin/shows with start time in the past returns 400")
+        void addShowWithStartTimeInPastReturns400() throws Exception {
+            OffsetDateTime pastStart = OffsetDateTime.now().minusHours(1);
+            OffsetDateTime pastEnd = pastStart.plusMinutes(178);
+            AddShowRequest req = new AddShowRequest();
+            req.setMovieId(movieId);
+            req.setHallId(hallId);
+            req.setStartTime(pastStart);
+            req.setEndTime(pastEnd);
+            mockMvc.perform(withAdminAuth(post("/admin/shows")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Show start time must be in the future"));
+        }
+
+        @Test
         @DisplayName("POST /admin/shows with non-existent hallId returns 400")
         void addShowInvalidHall() throws Exception {
             OffsetDateTime start = OffsetDateTime.now().plusHours(1);
@@ -1081,7 +1189,8 @@ class BackendIntegrationTest {
         @Test
         @DisplayName("POST /admin/shows with overlapping time in same hall returns 400")
         void addShowOverlappingInHall() throws Exception {
-            OffsetDateTime overlapStart = OffsetDateTime.now().plusHours(1).plusMinutes(30);
+            // Seed show is at plusDays(1); create overlapping show in same window
+            OffsetDateTime overlapStart = OffsetDateTime.now().plusDays(1).plusMinutes(30);
             OffsetDateTime overlapEnd = overlapStart.plusMinutes(178);
             AddShowRequest req = new AddShowRequest();
             req.setMovieId(movieId);

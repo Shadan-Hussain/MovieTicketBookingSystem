@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 /**
@@ -219,6 +220,20 @@ public class StripeService {
 
         if (!seatLockService.isLocked(showId, seatId)) {
             log.warn("Payment success but Redis lock expired for showId={}, seatId={}, sessionId={}; initiating refund", showId, seatId, sessionId);
+            try {
+                createRefundForCheckoutSession(sessionId);
+                txn.setStatus(Transaction.STATUS_REFUND_INITIATED);
+                txn.setUpdatedAt(Instant.now());
+                transactionRepository.save(txn);
+            } catch (Exception ex) {
+                log.error("Refund failed for sessionId={}", sessionId, ex);
+            }
+            return;
+        }
+
+        var show = showRepository.findById(showId).orElse(null);
+        if (show == null || show.getStartTime() == null || !show.getStartTime().isAfter(OffsetDateTime.now())) {
+            log.warn("Payment success but show already started or ended for showId={}, seatId={}, sessionId={}; initiating refund", showId, seatId, sessionId);
             try {
                 createRefundForCheckoutSession(sessionId);
                 txn.setStatus(Transaction.STATUS_REFUND_INITIATED);

@@ -43,6 +43,20 @@ function formatDuration(totalMinutes) {
 }
 
 /**
+ * Format time only as HH:mm from ISO string or Date.
+ * @param {string|Date} date - ISO string or Date
+ * @returns {string} e.g. "14:30"
+ */
+export function formatTimeHHMM(date) {
+  if (date == null) return '—';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '—';
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+/**
  * Format show timing for ticket: date + start time only.
  * @param {string} startTime - ISO string for start
  * @returns {string} e.g. "04/03/2025, 14:30"

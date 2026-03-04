@@ -1,31 +1,38 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSeatsForShow } from '../api';
+import { getShow, getSeatsForShow } from '../api';
 import BackButton from '../components/BackButton';
+import { formatDateDDMMYYYY, formatTimeHHMM, formatShowDuration } from '../utils/dateFormat';
 
 /**
- * Flow: (1) Load seats once from backend, store locally.
+ * Flow: (1) Load show details and seats once from backend, store locally.
  * (2) Selected/unselected state is frontend-only (no backend lock until Proceed).
- * (3) Refresh page = fetch seats again. (4) Proceed to payment = backend lock then redirect.
+ * (3) Refresh page = fetch again. (4) Proceed to payment = backend lock then redirect.
  */
 export default function SeatMap() {
   const { showId } = useParams();
+  const [showInfo, setShowInfo] = useState(null);
   const [seats, setSeats] = useState([]);
   const [selectedSeatId, setSelectedSeatId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const fetchSeats = useCallback(() => {
-    getSeatsForShow(showId)
-      .then(setSeats)
+  const fetchData = useCallback(() => {
+    setLoading(true);
+    setError('');
+    Promise.all([getShow(showId), getSeatsForShow(showId)])
+      .then(([show, seatList]) => {
+        setShowInfo(show);
+        setSeats(seatList);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [showId]);
 
   useEffect(() => {
-    fetchSeats();
-  }, [fetchSeats]);
+    fetchData();
+  }, [fetchData]);
 
   function handleSelectSeat(seat) {
     if (seat.status !== 'AVAILABLE') return;
@@ -91,6 +98,22 @@ export default function SeatMap() {
         </div>
       </div>
       {error && <div className="alert alert-error">{error}</div>}
+      {showInfo && (
+        <div className="seat-map-show-info">
+          {showInfo.movieName && <p><strong>Movie:</strong> {showInfo.movieName}</p>}
+          {showInfo.hallName && <p><strong>Hall:</strong> {showInfo.hallName}</p>}
+          {showInfo.theatreName && <p><strong>Theatre:</strong> {showInfo.theatreName}</p>}
+          {showInfo.startTime && (
+            <>
+              <p><strong>Show date:</strong> {formatDateDDMMYYYY(showInfo.startTime)}</p>
+              <p><strong>Show start time:</strong> {formatTimeHHMM(showInfo.startTime)}</p>
+              {formatShowDuration(showInfo.startTime, showInfo.endTime) !== '—' && (
+                <p><strong>Show duration:</strong> {formatShowDuration(showInfo.startTime, showInfo.endTime)}</p>
+              )}
+            </>
+          )}
+        </div>
+      )}
       <div className="seat-layout-center">
         <div className="seat-grid">
           {firstRowType != null && (

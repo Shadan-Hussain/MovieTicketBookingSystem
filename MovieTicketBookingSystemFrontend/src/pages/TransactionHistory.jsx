@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import { getMyTransactions } from '../api';
 import { formatDateTimeDDMMYYYY } from '../utils/dateFormat';
 
+function transactionStatusLabel(status) {
+  if (!status) return status;
+  if (status === 'REFUND_INITIATED') return 'Refund initiated';
+  if (status === 'SUCCESS') return 'Success';
+  if (status === 'FAILED') return 'Failed';
+  return status;
+}
+
 export default function TransactionHistory() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +37,7 @@ export default function TransactionHistory() {
               <p><strong>Transaction ID:</strong> {t.transactionId}</p>
               <p><strong>Show ID:</strong> {t.showId} · <strong>Seat ID:</strong> {t.seatId}</p>
               <p><strong>Amount:</strong> ₹{t.amount}</p>
-              <p><strong>Status:</strong> {t.status}</p>
+              <p><strong>Status:</strong> {transactionStatusLabel(t.status)}</p>
               <p><strong>Created:</strong> {formatDateTimeDDMMYYYY(t.createdAt)}</p>
             </li>
           ))}
