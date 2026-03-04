@@ -1058,6 +1058,28 @@ class BackendIntegrationTest {
     class AdminOptionsApi {
 
         @Test
+        @DisplayName("GET /admin/options/theatres returns id and label")
+        void adminOptionsTheatres() throws Exception {
+            mockMvc.perform(withAdminAuth(get("/admin/options/theatres")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$").isArray())
+                    .andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
+                    .andExpect(jsonPath("$[0].id").exists())
+                    .andExpect(jsonPath("$[0].label").exists());
+        }
+
+        @Test
+        @DisplayName("GET /admin/options/halls returns id and label")
+        void adminOptionsHalls() throws Exception {
+            mockMvc.perform(withAdminAuth(get("/admin/options/halls")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$").isArray())
+                    .andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
+                    .andExpect(jsonPath("$[0].id").exists())
+                    .andExpect(jsonPath("$[0].label").exists());
+        }
+
+        @Test
         @DisplayName("GET /admin/options/movies returns id, label and durationMins")
         void adminOptionsMoviesIncludesDuration() throws Exception {
             mockMvc.perform(withAdminAuth(get("/admin/options/movies")))

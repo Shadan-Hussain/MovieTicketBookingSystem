@@ -73,6 +73,39 @@
 			"name": "Admin (JWT with ADMIN role required)",
 			"item": [
 				{
+					"name": "Get Theatre Options",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": "{{baseUrl}}/admin/options/theatres",
+						"description": "Returns dropdown options (id, label) for theatres. Use when adding halls."
+					}
+				},
+				{
+					"name": "Get Hall Options",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": "{{baseUrl}}/admin/options/halls",
+						"description": "Returns dropdown options (id, label) for halls. Use when adding shows."
+					}
+				},
+				{
+					"name": "Get Movie Options",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": "{{baseUrl}}/admin/options/movies",
+						"description": "Returns dropdown options (id, label, durationMins) for movies. Use when adding shows."
+					}
+				},
+				{
 					"name": "Add City",
 					"request": {
 						"method": "POST",
@@ -244,6 +277,17 @@
 					}
 				},
 				{
+					"name": "Unlock Seat",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": "{{baseUrl}}/shows/1/seats/1/lock",
+						"description": "Replace 1/1 with showId/seatId. Removes lock only if held by the authenticated user. Returns 'Seat unlocked' or 'Lock not held by user'."
+					}
+				},
+				{
 					"name": "Create Payment Session",
 					"request": {
 						"method": "POST",
@@ -252,6 +296,17 @@
 						],
 						"url": "{{baseUrl}}/shows/1/seats/1/payment-session",
 						"description": "Replace with showId/seatId. Only works if the seat is locked by the same user. Returns Stripe checkout session URL."
+					}
+				},
+				{
+					"name": "Get My Tickets (list)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": "{{baseUrl}}/tickets",
+						"description": "Returns all tickets for the authenticated user (no query params)."
 					}
 				},
 				{
@@ -271,6 +326,17 @@
 							]
 						},
 						"description": "Returns ticket only if it belongs to the authenticated user. 404 otherwise."
+					}
+				},
+				{
+					"name": "Get My Transactions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": "{{baseUrl}}/transactions",
+						"description": "Returns list of current user's transactions (PENDING excluded)."
 					}
 				}
 			]
@@ -299,6 +365,27 @@
 						"method": "GET",
 						"url": "{{baseUrl}}/redirect/cancel",
 						"description": "Stripe redirects here when user cancels checkout."
+					}
+				}
+			]
+		},
+		{
+			"name": "Webhook (Stripe)",
+			"item": [
+				{
+					"name": "Stripe Webhook",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Stripe-Signature", "value": "t=123,v1=xxx", "description": "Stripe signs the payload; use stripe listen for local testing" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"type\":\"checkout.session.completed\"}"
+						},
+						"url": "{{baseUrl}}/webhook/stripe",
+						"description": "Called by Stripe (e.g. checkout.session.completed). For local testing use: stripe listen --forward-to localhost:8081/webhook/stripe. Signature is required."
 					}
 				}
 			]
