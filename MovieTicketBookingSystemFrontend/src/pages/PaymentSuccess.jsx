@@ -48,6 +48,7 @@ export default function PaymentSuccess() {
         <>
           <div className="ticket-card">
             <h2>Your ticket</h2>
+            {ticket.movieName && <p><strong>Movie:</strong> {ticket.movieName}</p>}
             <p><strong>Ticket ID:</strong> {ticket.ticketId}</p>
             <p><strong>Show ID:</strong> {ticket.showId}</p>
             <p><strong>Seat number:</strong> {ticket.seatNumber ?? ticket.seatId ?? '—'}</p>

@@ -7,7 +7,10 @@ import { formatDateDDMMYYYY } from '../utils/dateFormat';
 function parseDT(s) {
   if (!s) return { date: '', dateKey: '', time: '' };
   const d = new Date(s);
-  const dateKey = d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const dateKey = `${y}-${m}-${day}`;
   return {
     date: formatDateDDMMYYYY(d),
     dateKey,
@@ -132,7 +135,9 @@ export default function ShowList() {
                   className="show-time-box"
                   onClick={() => navigate(`/shows/${s.showId}/seats`)}
                 >
-                  <span className="show-time">{s.time}</span>
+                  <span className="show-time">
+                    {s.hallName ? `${s.hallName}, ${s.time}` : s.time}
+                  </span>
                 </button>
               ))}
             </div>

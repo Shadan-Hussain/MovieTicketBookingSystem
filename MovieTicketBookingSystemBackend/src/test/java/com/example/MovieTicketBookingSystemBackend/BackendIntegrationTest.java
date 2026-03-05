@@ -767,7 +767,8 @@ class BackendIntegrationTest {
                     .andExpect(jsonPath("$").isArray())
                     .andExpect(jsonPath("$[0].ticketId").exists())
                     .andExpect(jsonPath("$[0].showId").value(showId))
-                    .andExpect(jsonPath("$[0].seatId").value(seatId));
+                    .andExpect(jsonPath("$[0].seatId").value(seatId))
+                    .andExpect(jsonPath("$[0].movieName").value(seedMovieName));
         }
 
         @Test

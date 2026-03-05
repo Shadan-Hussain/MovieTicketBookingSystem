@@ -9,6 +9,7 @@ public class TicketResponse {
     private Long seatId;
     private String seatNumber;
     private Long transactionId;
+    private String movieName;
     private String theatreName;
     private String theatreAddress;
     private String hallName;
@@ -17,13 +18,14 @@ public class TicketResponse {
     private Instant createdAt;
 
     public TicketResponse(Long ticketId, Long showId, Long seatId, String seatNumber, Long transactionId,
-                          String theatreName, String theatreAddress, String hallName, String showStartTime,
-                          String showEndTime, Instant createdAt) {
+                          String movieName, String theatreName, String theatreAddress, String hallName,
+                          String showStartTime, String showEndTime, Instant createdAt) {
         this.ticketId = ticketId;
         this.showId = showId;
         this.seatId = seatId;
         this.seatNumber = seatNumber;
         this.transactionId = transactionId;
+        this.movieName = movieName;
         this.theatreName = theatreName;
         this.theatreAddress = theatreAddress;
         this.hallName = hallName;
@@ -33,6 +35,7 @@ public class TicketResponse {
     }
 
     public Long getTicketId() { return ticketId; }
+    public String getMovieName() { return movieName; }
     public Long getShowId() { return showId; }
     public Long getSeatId() { return seatId; }
     public String getSeatNumber() { return seatNumber; }

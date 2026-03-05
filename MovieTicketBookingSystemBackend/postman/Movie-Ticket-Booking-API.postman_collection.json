@@ -342,7 +342,7 @@
 							{ "key": "Authorization", "value": "Bearer {{token}}" }
 						],
 						"url": "{{baseUrl}}/tickets",
-						"description": "Returns all tickets for the authenticated user (no query params)."
+						"description": "Returns all tickets for the authenticated user (no query params). Each ticket includes ticketId, showId, seatId/seatNumber, movieName, theatreName, theatreAddress, hallName, showStartTime, showEndTime and transactionId."
 					}
 				},
 				{
@@ -361,7 +361,7 @@
 								{ "key": "seat_id", "value": "1" }
 							]
 						},
-						"description": "Returns ticket if the user has a successful payment for this show+seat. 400 'payment failed' if the user's latest transaction for this show+seat is FAILED. 400 'Ticket creation failed, refund initiated' if transaction is REFUND_INITIATED. 404 if no ticket or transaction for this user."
+						"description": "Returns single ticket (ticketId, showId, seatId/seatNumber, movieName, theatreName, theatreAddress, hallName, showStartTime, showEndTime, transactionId) if the user has a successful payment for this show+seat. 400 'payment failed' if the user's latest transaction for this show+seat is FAILED. 400 'Ticket creation failed, refund initiated' if transaction is REFUND_INITIATED. 404 if no ticket or transaction for this user."
 					}
 				},
 				{

@@ -39,6 +39,7 @@ public class TicketService {
 
     /** Find ticket by show and seat (successful transaction). Returns ticket only if it belongs to the given user.
      * If the user has a transaction in FAILED or REFUND_INITIATED state for this show+seat, throws with appropriate message. */
+    @Transactional(readOnly = true)
     public Optional<TicketResponse> getTicket(Long showId, Long seatId, Long userId) {
         if (userId == null) {
             return Optional.empty();
@@ -68,12 +69,13 @@ public class TicketService {
         String seatNumber = seat != null ? seat.getNumber() : null;
         Hall hall = show != null ? show.getHall() : null;
         Theatre theatre = hall != null ? hall.getTheatre() : null;
+        String movieName = show != null && show.getMovie() != null ? show.getMovie().getName() : null;
         String theatreName = theatre != null ? theatre.getName() : null;
         String theatreAddress = theatre != null ? theatre.getAddress() : null;
         String hallName = hall != null ? hall.getName() : null;
         String showStartTime = show != null && show.getStartTime() != null ? show.getStartTime().toString() : null;
         String showEndTime = show != null && show.getEndTime() != null ? show.getEndTime().toString() : null;
         return new TicketResponse(t.getTicketId(), showId, seatId, seatNumber, t.getTransactionId(),
-                theatreName, theatreAddress, hallName, showStartTime, showEndTime, t.getCreatedAt());
+                movieName, theatreName, theatreAddress, hallName, showStartTime, showEndTime, t.getCreatedAt());
     }
 }
