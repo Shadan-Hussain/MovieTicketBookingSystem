@@ -1,14 +1,16 @@
 package com.example.MovieTicketBookingSystemBackend.service;
 
+import com.example.MovieTicketBookingSystemBackend.dto.MessageResponse;
 import com.example.MovieTicketBookingSystemBackend.dto.ShowResponse;
 import com.example.MovieTicketBookingSystemBackend.dto.ShowSeatResponse;
+import com.example.MovieTicketBookingSystemBackend.dto.StripeSessionResponse;
 import com.example.MovieTicketBookingSystemBackend.model.Seat;
 import com.example.MovieTicketBookingSystemBackend.model.Show;
 import com.example.MovieTicketBookingSystemBackend.model.ShowSeat;
 import com.example.MovieTicketBookingSystemBackend.repository.SeatRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.ShowRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.ShowSeatRepository;
-import com.example.MovieTicketBookingSystemBackend.service.SeatLockService;
+import com.stripe.exception.StripeException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -25,13 +27,16 @@ public class ShowService {
     private final ShowSeatRepository showSeatRepository;
     private final SeatRepository seatRepository;
     private final SeatLockService seatLockService;
+    private final StripeService stripeService;
 
     public ShowService(ShowRepository showRepository, ShowSeatRepository showSeatRepository,
-                       SeatRepository seatRepository, SeatLockService seatLockService) {
+                       SeatRepository seatRepository, SeatLockService seatLockService,
+                       StripeService stripeService) {
         this.showRepository = showRepository;
         this.showSeatRepository = showSeatRepository;
         this.seatRepository = seatRepository;
         this.seatLockService = seatLockService;
+        this.stripeService = stripeService;
     }
 
     public List<ShowResponse> getShowsByCityAndMovie(Long cityId, Long movieId) {
@@ -69,6 +74,7 @@ public class ShowService {
     }
 
     public List<ShowSeatResponse> getSeatsForShow(Long showId) {
+        validateShowStartInFuture(showId);
         List<ShowSeat> showSeats = showSeatRepository.findByShow_ShowIdOrderBySeat_SeatId(showId);
         if (showSeats.isEmpty()) {
             return List.of();
@@ -86,6 +92,47 @@ public class ShowService {
                 })
                 .filter(r -> r != null)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Locks the seat for the user. Validates show is in future and seat is available.
+     * @return message for response body
+     * @throws ResponseStatusException NOT_FOUND, CONFLICT
+     */
+    public MessageResponse lockSeat(Long showId, Long seatId, Long userId) {
+        validateShowStartInFuture(showId);
+        ShowSeat showSeat = showSeatRepository.findByShow_ShowIdAndSeat_SeatId(showId, seatId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ShowSeat not found"));
+        if (!ShowSeat.STATUS_AVAILABLE.equals(showSeat.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Seat is not available");
+        }
+        if (!seatLockService.setLockIfAbsent(showId, seatId, userId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Seat not available at the moment");
+        }
+        return new MessageResponse("Seat successfully locked");
+    }
+
+    /**
+     * Creates a Stripe checkout session for the seat. Caller must hold the lock for this user.
+     * @throws ResponseStatusException NOT_FOUND, FORBIDDEN, CONFLICT, INTERNAL_SERVER_ERROR
+     */
+    public StripeSessionResponse createPaymentSession(Long showId, Long seatId, Long userId) {
+        validateShowStartInFuture(showId);
+        if (!seatLockService.isLockedBy(showId, seatId, userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Lock expired or held by another user; please lock the seat again");
+        }
+        ShowSeat showSeat = showSeatRepository.findByShow_ShowIdAndSeat_SeatId(showId, seatId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ShowSeat not found"));
+        if (!ShowSeat.STATUS_AVAILABLE.equals(showSeat.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Seat is not available");
+        }
+        try {
+            return stripeService.createCheckoutSession(showId, seatId, userId);
+        } catch (StripeException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Payment session creation failed", e);
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
+        }
     }
 
     private ShowResponse toResponse(Show s) {

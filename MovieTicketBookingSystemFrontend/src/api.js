@@ -182,11 +182,16 @@ export async function adminAddHall(theatreId, name) {
   return res.json(); // { id: hallId }
 }
 
-export async function adminAddMovie(name, durationMins, description, language) {
+/** Add movie with optional poster. Sends multipart: part "movie" (JSON), optional part "file" (poster image). */
+export async function adminAddMovie(name, durationMins, description, language, posterFile = null) {
+  const formData = new FormData();
+  formData.append('movie', new Blob([JSON.stringify({ name, durationMins, description, language })], { type: 'application/json' }));
+  if (posterFile) formData.append('file', posterFile);
+  const headers = getToken() ? { Authorization: `Bearer ${getToken()}` } : {};
   const res = await fetch(`${API_BASE}/admin/movies`, {
     method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ name, durationMins, description, language }),
+    headers,
+    body: formData,
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -195,27 +200,23 @@ export async function adminAddMovie(name, durationMins, description, language) {
   return res.json();
 }
 
-/** Upload poster image (multipart). Call after adding a movie with the returned id. */
-export async function uploadMoviePoster(movieId, file) {
-  const formData = new FormData();
-  formData.append('file', file);
-  const token = getToken();
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const res = await fetch(`${API_BASE}/admin/movies/${movieId}/poster`, {
-    method: 'POST',
-    headers,
-    body: formData,
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || data.error || 'Upload failed');
-  }
+/** Whether movie has a poster (for conditional loading). */
+export function hasPoster(movie) {
+  return Boolean(movie?.hasPoster && movie?.movieId);
 }
 
-/** Returns URL for poster when stored in DB (BYTEA). */
-export function getPosterUrl(movie) {
-  if (movie?.hasPoster && movie?.movieId) return `${API_BASE}/movies/${movie.movieId}/poster`;
-  return null;
+/**
+ * Fetches poster image with JWT and returns a blob URL. Caller must revoke the URL when done:
+ * URL.revokeObjectURL(url) to avoid memory leaks.
+ */
+export async function fetchPosterBlobUrl(movieId) {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}/movies/${movieId}/poster`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Poster not found');
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
 }
 
 export async function adminAddSeats(hallId, rows, cols, premiumRowStart, premiumRowEnd, priceNormal, pricePremium) {

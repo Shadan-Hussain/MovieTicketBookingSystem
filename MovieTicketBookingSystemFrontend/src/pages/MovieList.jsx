@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getMoviesByCity, getPosterUrl } from '../api';
+import { getMoviesByCity, hasPoster, fetchPosterBlobUrl } from '../api';
 import BackButton from '../components/BackButton';
 
 export default function MovieList() {
@@ -8,6 +8,7 @@ export default function MovieList() {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [posterUrls, setPosterUrls] = useState({});
   const [failedPosters, setFailedPosters] = useState(() => new Set());
   const navigate = useNavigate();
 
@@ -21,6 +22,33 @@ export default function MovieList() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [cityId]);
+
+  const posterBlobUrlsRef = useRef({});
+  useEffect(() => {
+    setPosterUrls({});
+    const withPoster = movies.filter((m) => hasPoster(m));
+    if (withPoster.length === 0) return;
+    let cancelled = false;
+    withPoster.forEach((m) => {
+      fetchPosterBlobUrl(m.movieId)
+        .then((url) => {
+          if (cancelled) {
+            URL.revokeObjectURL(url);
+            return;
+          }
+          posterBlobUrlsRef.current[m.movieId] = url;
+          setPosterUrls((prev) => ({ ...prev, [m.movieId]: url }));
+        })
+        .catch(() => {
+          if (!cancelled) onPosterError(m.movieId);
+        });
+    });
+    return () => {
+      cancelled = true;
+      Object.values(posterBlobUrlsRef.current).forEach((u) => URL.revokeObjectURL(u));
+      posterBlobUrlsRef.current = {};
+    };
+  }, [movies]);
 
   if (loading) {
     return (
@@ -60,8 +88,10 @@ export default function MovieList() {
               onClick={() => navigate(`/cities/${cityId}/movies/${m.movieId}`)}
             >
               <div className="movie-poster-box">
-                {getPosterUrl(m) && !failedPosters.has(m.movieId) ? (
-                  <img src={getPosterUrl(m)} alt="" className="movie-poster" onError={() => onPosterError(m.movieId)} />
+                {posterUrls[m.movieId] && !failedPosters.has(m.movieId) ? (
+                  <img src={posterUrls[m.movieId]} alt="" className="movie-poster" onError={() => onPosterError(m.movieId)} />
+                ) : hasPoster(m) && !failedPosters.has(m.movieId) ? (
+                  <span className="movie-poster-placeholder" aria-hidden>Loading…</span>
                 ) : (
                   <span className="movie-poster-placeholder" aria-hidden>No poster</span>
                 )}

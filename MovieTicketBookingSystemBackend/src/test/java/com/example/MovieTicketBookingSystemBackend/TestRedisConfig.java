@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -40,6 +41,10 @@ public class TestRedisConfig {
         when(ops.setIfAbsent(any(), any(), any(Duration.class)))
                 .thenAnswer(inv -> STORAGE.putIfAbsent(inv.getArgument(0), inv.getArgument(1)) == null);
         when(ops.setIfAbsent(any(), any())).thenAnswer(inv -> STORAGE.putIfAbsent(inv.getArgument(0), inv.getArgument(1)) == null);
+        doAnswer(inv -> {
+            STORAGE.put(inv.getArgument(0), inv.getArgument(1));
+            return null;
+        }).when(ops).set(anyString(), anyString(), any(Duration.class));
         return template;
     }
 }

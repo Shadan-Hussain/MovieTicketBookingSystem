@@ -6,11 +6,14 @@ import com.example.MovieTicketBookingSystemBackend.repository.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -126,7 +129,7 @@ public class AdminService {
     }
 
     @Transactional
-    public CreatedResponse addMovie(AddMovieRequest req) {
+    public CreatedResponse addMovie(AddMovieRequest req, MultipartFile posterFile) {
         if (req.getName() == null || req.getName().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name is required");
         }
@@ -148,16 +151,40 @@ public class AdminService {
         movie.setDescription(req.getDescription());
         movie.setLanguage(req.getLanguage());
         movie.setCreatedAt(Instant.now());
-        return new CreatedResponse(movieRepository.save(movie).getMovieId());
+        movie = movieRepository.save(movie);
+        if (posterFile != null && !posterFile.isEmpty()) {
+            byte[] bytes = readAndValidatePosterBytes(posterFile);
+            String contentType = normalizedPosterContentType(posterFile);
+            movie.setPosterImage(bytes);
+            movie.setPosterContentType(contentType);
+            movieRepository.save(movie);
+        }
+        return new CreatedResponse(movie.getMovieId());
     }
 
-    @Transactional
-    public void setMoviePoster(Long movieId, byte[] imageBytes, String contentType) {
-        Movie movie = movieRepository.findById(movieId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Movie not found"));
-        movie.setPosterImage(imageBytes);
-        movie.setPosterContentType(contentType != null && !contentType.isBlank() ? contentType : "image/jpeg");
-        movieRepository.save(movie);
+    private static final Set<String> ALLOWED_POSTER_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+
+    private static String normalizedPosterContentType(MultipartFile file) {
+        String raw = file.getContentType();
+        String normalized = raw != null ? raw.split(";")[0].trim() : null;
+        if (normalized == null || !ALLOWED_POSTER_TYPES.contains(normalized)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Poster must be image/jpeg, image/png, or image/webp");
+        }
+        return normalized;
+    }
+
+    private static byte[] readAndValidatePosterBytes(MultipartFile file) {
+        byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to read file: " + e.getMessage());
+        }
+        if (bytes.length == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Poster file is required");
+        }
+        return bytes;
     }
 
     /**

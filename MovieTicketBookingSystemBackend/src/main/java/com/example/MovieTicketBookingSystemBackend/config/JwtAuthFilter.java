@@ -54,11 +54,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-        // Allow GET /movies/{id}/poster for <img src> (no Authorization sent by browser)
-        if ("GET".equalsIgnoreCase(request.getMethod()) && path.matches("/movies/\\d+/poster")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
 
         String authHeader = request.getHeader(AUTHORIZATION_HEADER);
         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {

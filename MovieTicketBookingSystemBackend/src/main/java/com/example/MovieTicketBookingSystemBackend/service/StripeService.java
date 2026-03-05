@@ -27,7 +27,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.Optional;
 
 /**
@@ -73,8 +72,8 @@ public class StripeService {
     }
 
     /**
-     * Creates a Stripe Checkout Session for (showId, seatId, userId). Creates Transaction PENDING with metadata.
-     * Caller must hold Redis lock for (showId, seatId) for this user.
+     * Creates a Stripe Checkout Session for (showId, seatId, userId). Does not create or update Transaction.
+     * Caller must hold Redis lock for this user; session_id is stored in Redis only after this call.
      */
     public StripeSessionResponse createCheckoutSession(Long showId, Long seatId, Long userId) throws StripeException {
         if (userId == null) {
@@ -119,23 +118,19 @@ public class StripeService {
 
         Session session = Session.create(params);
 
-        Transaction txn = new Transaction();
-        txn.setShow(showRepository.getReferenceById(showId));
-        txn.setSeat(seatRepository.getReferenceById(seatId));
-        txn.setUser(userRepository.getReferenceById(userId));
-        txn.setStripeSessionId(session.getId());
-        txn.setAmount(amountRupees);
-        txn.setCurrency("inr");
-        txn.setStatus(Transaction.STATUS_PENDING);
-        txn.setCreatedAt(Instant.now());
-        txn.setUpdatedAt(Instant.now());
-        transactionRepository.save(txn);
+        String sessionId = session.getId();
+        if (sessionId == null || sessionId.isEmpty()) {
+            throw new IllegalStateException("Stripe session has no id");
+        }
+        if (!seatLockService.setPaymentSession(showId, seatId, userId, sessionId)) {
+            throw new IllegalStateException("Payment session already set or lock invalid");
+        }
 
-        return new StripeSessionResponse(session.getId(), session.getUrl());
+        return new StripeSessionResponse(sessionId, session.getUrl());
     }
 
     /**
-     * Webhook: payment_intent.payment_failed. Marks the corresponding transaction as FAILED if found.
+     * Webhook: payment_intent.payment_failed. Creates a FAILED transaction using show_id, seat_id, user_id from session metadata.
      */
     @Transactional
     public void handlePaymentFailure(String paymentIntentId) {
@@ -152,22 +147,43 @@ public class StripeService {
             }
             Session session = sessions.getData().get(0);
             String sessionId = session.getId();
-            Optional<Transaction> optTxn = transactionRepository.findByStripeSessionId(sessionId);
-            if (optTxn.isEmpty()) {
-                log.warn("Payment failure but no transaction for sessionId={}, paymentIntentId={}", sessionId, paymentIntentId);
+            if (sessionId == null || sessionId.isEmpty()) {
                 return;
             }
-            Transaction txn = optTxn.get();
-            if (Transaction.STATUS_FAILED.equals(txn.getStatus())
-                    || Transaction.STATUS_SUCCESS.equals(txn.getStatus())
-                    || Transaction.STATUS_REFUND_INITIATED.equals(txn.getStatus())) {
+            Optional<Transaction> existing = transactionRepository.findByStripeSessionId(sessionId);
+            if (existing.isPresent()) {
+                Transaction txn = existing.get();
+                if (Transaction.STATUS_SUCCESS.equals(txn.getStatus()) || Transaction.STATUS_REFUND_INITIATED.equals(txn.getStatus())) {
+                    return;
+                }
+                txn.setStatus(Transaction.STATUS_FAILED);
+                txn.setUpdatedAt(Instant.now());
+                transactionRepository.save(txn);
+                log.info("Payment failed: transactionId={} marked FAILED", txn.getTransactionId());
                 return;
             }
-            txn.setStatus(Transaction.STATUS_FAILED);
-            txn.setUpdatedAt(Instant.now());
-            transactionRepository.save(txn);
-            log.info("Payment failed: transactionId={} marked FAILED (paymentIntentId={}, sessionId={})",
-                    txn.getTransactionId(), paymentIntentId, sessionId);
+            String showIdStr = session.getMetadata() != null ? session.getMetadata().get("show_id") : null;
+            String seatIdStr = session.getMetadata() != null ? session.getMetadata().get("seat_id") : null;
+            String userIdStr = session.getMetadata() != null ? session.getMetadata().get("user_id") : null;
+            if (showIdStr == null || seatIdStr == null || userIdStr == null) {
+                log.warn("Payment failure but session missing metadata for paymentIntentId={}", paymentIntentId);
+                return;
+            }
+            long showId;
+            long seatId;
+            long userId;
+            try {
+                showId = Long.parseLong(showIdStr);
+                seatId = Long.parseLong(seatIdStr);
+                userId = Long.parseLong(userIdStr);
+            } catch (NumberFormatException e) {
+                log.warn("Invalid metadata in session for paymentIntentId={}", paymentIntentId, e);
+                return;
+            }
+            Seat seat = seatRepository.findById(seatId).orElse(null);
+            long amountRupees = seat != null && seat.getPrice() != null ? seat.getPrice() : 100L;
+            Transaction txn = createAndSaveTransaction(showId, seatId, userId, sessionId, amountRupees, Transaction.STATUS_FAILED);
+            log.info("Payment failed: created FAILED transactionId={} for sessionId={}", txn.getTransactionId(), sessionId);
         } catch (Exception e) {
             log.error("handlePaymentFailure failed for paymentIntentId={}", paymentIntentId, e);
         }
@@ -187,107 +203,108 @@ public class StripeService {
     }
 
     /**
-     * Webhook: checkout.session.completed. Idempotent by stripe_session_id.
-     * Sets ShowSeat BOOKED, Transaction SUCCESS, creates Ticket. If lock expired, initiates refund.
+     * After Redis validation: create Transaction (SUCCESS), update ShowSeat, create Ticket. Does not remove Redis key.
+     */
+    private Transaction createAndSaveTransaction(Long showId, Long seatId, Long userId, String sessionId, long amountRupees, String status) {
+        Transaction txn = new Transaction();
+        txn.setShow(showRepository.getReferenceById(showId));
+        txn.setSeat(seatRepository.getReferenceById(seatId));
+        txn.setUser(userRepository.getReferenceById(userId));
+        txn.setStripeSessionId(sessionId);
+        txn.setAmount(amountRupees);
+        txn.setCurrency("inr");
+        txn.setStatus(status);
+        txn.setCreatedAt(Instant.now());
+        txn.setUpdatedAt(Instant.now());
+        return transactionRepository.save(txn);
+    }
+
+    private void completeBooking(Long showId, Long seatId, Long userId, String sessionId) {
+        Seat seat = seatRepository.findById(seatId)
+                .orElseThrow(() -> new IllegalStateException("Seat not found: " + seatId));
+        long amountRupees = seat.getPrice() != null ? seat.getPrice() : 100L;
+        Transaction txn = createAndSaveTransaction(showId, seatId, userId, sessionId, amountRupees, Transaction.STATUS_SUCCESS);
+
+        ShowSeat showSeat = showSeatRepository.findByShow_ShowIdAndSeat_SeatId(showId, seatId)
+                .orElseThrow(() -> new IllegalStateException("ShowSeat not found: " + showId + "," + seatId));
+        showSeat.setStatus(ShowSeat.STATUS_BOOKED);
+        showSeatRepository.save(showSeat);
+
+        Ticket ticket = new Ticket();
+        ticket.setTransaction(txn);
+        ticket.setCreatedAt(Instant.now());
+        ticketRepository.save(ticket);
+
+        log.info("Payment success: transactionId={} showId={} seatId={} sessionId={}", txn.getTransactionId(), showId, seatId, sessionId);
+    }
+
+    private static class RefundRequiredException extends RuntimeException {
+        RefundRequiredException(String message) { super(message); }
+        RefundRequiredException(String message, Throwable cause) { super(message, cause); }
+    }
+
+    private void doRefund(String sessionId) {
+        try {
+            createRefundForCheckoutSession(sessionId);
+        } catch (Exception ex) {
+            log.error("Refund failed for sessionId={}", sessionId, ex);
+        }
+    }
+
+    /**
+     * Webhook: checkout.session.completed.
+     * 1) Get show_id, seat_id, user_id from Stripe session metadata.
+     * 2) Check Redis: key must exist, stored session_id must match. If not → refund and return.
+     * 3) Only then: create Transaction, update ShowSeat, create Ticket. Do not remove Redis key.
+     * Any validation failure or booking failure triggers refund in one place.
      */
     @Transactional
     public void handlePaymentSuccess(String sessionId) {
-        Optional<Transaction> optTxn = transactionRepository.findByStripeSessionId(sessionId);
-        if (optTxn.isEmpty()) {
-            log.warn("Payment success but no transaction for sessionId={}", sessionId);
-            return;
-        }
-        Transaction txn = optTxn.get();
-        if (Transaction.STATUS_SUCCESS.equals(txn.getStatus())) {
-            return; // idempotent, already done
-        }
-
-        boolean lockSet = seatLockService.setTicketLockIfAbsent(sessionId);
-        if (!lockSet) {
-            // Duplicate webhook or retry: re-fetch and return if already SUCCESS; otherwise fall through and complete
-            optTxn = transactionRepository.findByStripeSessionId(sessionId);
-            if (optTxn.isEmpty()) {
-                return;
-            }
-            if (Transaction.STATUS_SUCCESS.equals(optTxn.get().getStatus())) {
-                return;
-            }
-            txn = optTxn.get();
-        }
-
-        Long showId = txn.getShowId();
-        Long seatId = txn.getSeatId();
-
-        if (!seatLockService.isLocked(showId, seatId)) {
-            log.warn("Payment success but Redis lock expired for showId={}, seatId={}, sessionId={}; initiating refund", showId, seatId, sessionId);
-            try {
-                createRefundForCheckoutSession(sessionId);
-                txn.setStatus(Transaction.STATUS_REFUND_INITIATED);
-                txn.setUpdatedAt(Instant.now());
-                transactionRepository.save(txn);
-            } catch (Exception ex) {
-                log.error("Refund failed for sessionId={}", sessionId, ex);
-            }
-            return;
-        }
-
-        var show = showRepository.findById(showId).orElse(null);
-        if (show == null || show.getStartTime() == null || !show.getStartTime().isAfter(OffsetDateTime.now())) {
-            log.warn("Payment success but show already started or ended for showId={}, seatId={}, sessionId={}; initiating refund", showId, seatId, sessionId);
-            try {
-                createRefundForCheckoutSession(sessionId);
-                txn.setStatus(Transaction.STATUS_REFUND_INITIATED);
-                txn.setUpdatedAt(Instant.now());
-                transactionRepository.save(txn);
-            } catch (Exception ex) {
-                log.error("Refund failed for sessionId={}", sessionId, ex);
-            }
-            return;
-        }
-
         try {
-            ShowSeat showSeat = showSeatRepository.findByShow_ShowIdAndSeat_SeatId(showId, seatId)
-                    .orElseThrow(() -> new IllegalStateException("ShowSeat not found: " + showId + "," + seatId));
-            showSeat.setStatus(ShowSeat.STATUS_BOOKED);
-            showSeatRepository.save(showSeat);
-
-            txn.setStatus(Transaction.STATUS_SUCCESS);
-            txn.setUpdatedAt(Instant.now());
-            transactionRepository.save(txn);
-            log.info("Payment success: transactionId={} showId={} seatId={} sessionId={}", txn.getTransactionId(), showId, seatId, sessionId);
-
-            // FOR TESTING: delay before inserting ticket so frontend "redirecting..." polling can be verified. Remove in production.
+            Stripe.apiKey = secretKey;
+            Session session;
             try {
-                Thread.sleep(8000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.warn("Ticket delay interrupted", e);
+                session = Session.retrieve(sessionId);
+            } catch (Exception e) {
+                throw new RefundRequiredException("Failed to retrieve Stripe session for sessionId=" + sessionId, e);
             }
 
-            if (ticketRepository.findByTransaction_TransactionId(txn.getTransactionId()).isEmpty()) {
-                Ticket ticket = new Ticket();
-                ticket.setTransaction(txn);
-                ticket.setCreatedAt(Instant.now());
-                ticketRepository.save(ticket);
+            String showIdStr = session.getMetadata() != null ? session.getMetadata().get("show_id") : null;
+            String seatIdStr = session.getMetadata() != null ? session.getMetadata().get("seat_id") : null;
+            if (showIdStr == null || seatIdStr == null) {
+                throw new RefundRequiredException("Session missing show_id or seat_id metadata, sessionId=" + sessionId);
+            }
+            long showId;
+            long seatId;
+            try {
+                showId = Long.parseLong(showIdStr);
+                seatId = Long.parseLong(seatIdStr);
+            } catch (NumberFormatException e) {
+                throw new RefundRequiredException("Invalid show_id or seat_id in session metadata, sessionId=" + sessionId);
             }
 
-            seatLockService.removeLock(showId, seatId);
+            Optional<Transaction> existingTxn = transactionRepository.findByStripeSessionId(sessionId);
+            if (existingTxn.isPresent() && Transaction.STATUS_SUCCESS.equals(existingTxn.get().getStatus())) {
+                return;
+            }
+
+            var sessionData = seatLockService.getPaymentSessionData(showId, seatId);
+            if (sessionData.isEmpty()) {
+                throw new RefundRequiredException("Redis key missing for showId=" + showId + ", seatId=" + seatId + ", sessionId=" + sessionId);
+            }
+            String storedSessionId = sessionData.get().getSessionId();
+            if (storedSessionId == null || !storedSessionId.equals(sessionId)) {
+                throw new RefundRequiredException("Session id mismatch for showId=" + showId + ", seatId=" + seatId + ", sessionId=" + sessionId);
+            }
+
+            Long userId = sessionData.get().getUserId();
+            completeBooking(showId, seatId, userId, sessionId);
+
         } catch (DataIntegrityViolationException e) {
-            log.error("Duplicate ticket on payment success (idempotent), sessionId={}", sessionId, e);
-            // Duplicate ticket: ensure transaction is SUCCESS
-            txn.setStatus(Transaction.STATUS_SUCCESS);
-            txn.setUpdatedAt(Instant.now());
-            transactionRepository.save(txn);
+            log.error("Duplicate booking (idempotent), sessionId={}", sessionId, e);
         } catch (Exception e) {
-            log.error("handlePaymentSuccess failed for sessionId={}, showId={}, seatId={}; initiating refund", sessionId, showId, seatId, e);
-            try {
-                createRefundForCheckoutSession(sessionId);
-                txn.setStatus(Transaction.STATUS_REFUND_INITIATED);
-                txn.setUpdatedAt(Instant.now());
-                transactionRepository.save(txn);
-            } catch (Exception ex) {
-                log.error("Refund failed for sessionId={}", sessionId, ex);
-            }
+            log.error("handlePaymentSuccess failed for sessionId={}, initiating refund", sessionId, e);
+            doRefund(sessionId);
             throw e;
         }
     }

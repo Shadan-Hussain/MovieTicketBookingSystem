@@ -32,7 +32,7 @@ public class MovieController {
         return ResponseEntity.ok(movieService.getMovieById(movieId));
     }
 
-    /** Serves the poster image stored in DB (BYTEA). No auth so <img src> works. */
+    /** Serves the poster image stored in DB (BYTEA).*/
     @GetMapping("/{movieId}/poster")
     public ResponseEntity<byte[]> getPoster(@PathVariable Long movieId) {
         return movieService.getPoster(movieId)

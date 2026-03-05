@@ -9,13 +9,15 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.Optional;
 
+/**
+ * Redis: seat_lock:{show_id}:{seat_id} → user_id or user_id:session_id.
+ * TTL 10 min. Lock: if key exists do not proceed. Payment session: only if value is auth user and session_id not already set.
+ */
 @Service
 public class SeatLockService {
 
     private static final Logger log = LoggerFactory.getLogger(SeatLockService.class);
-    private static final String TICKET_LOCK_VALUE = "locked";
     private static final Duration SEAT_LOCK_TTL = Duration.ofMinutes(10);
-    private static final Duration TICKET_LOCK_TTL = Duration.ofMinutes(10);
 
     private final RedisTemplate<String, String> redisTemplate;
 
@@ -23,69 +25,103 @@ public class SeatLockService {
         this.redisTemplate = redisTemplate;
     }
 
-    /** Lock key for (showId, seatId) — used for single-seat booking flow. Value is user_id (plain). */
-    private static String seatLockKey(Long showId, Long seatId) {
-        return "seat:lock:" + showId + ":" + seatId;
+    private static String key(Long showId, Long seatId) {
+        return "seat_lock:" + showId + ":" + seatId;
     }
 
-    /** Idempotency key for webhook: one ticket per Stripe session. */
-    private static String ticketLockKey(String stripeSessionId) {
-        return "ticket:lock:" + stripeSessionId;
+    private String getValue(Long showId, Long seatId) {
+        return redisTemplate.opsForValue().get(key(showId, seatId));
     }
 
-    /** Returns true if the seat for this show is currently locked. */
     public boolean isLocked(Long showId, Long seatId) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(seatLockKey(showId, seatId)));
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key(showId, seatId)));
     }
 
-    /**
-     * Returns the user_id that holds the lock, or empty if not locked.
-     */
+    /** Owner of the lock (user_id from value). */
     public Optional<Long> getLockOwner(Long showId, Long seatId) {
-        String key = seatLockKey(showId, seatId);
-        if (!Boolean.TRUE.equals(redisTemplate.hasKey(key))) {
-            return Optional.empty();
-        }
-        String value = redisTemplate.opsForValue().get(key);
-        if (value == null || value.isEmpty()) {
-            return Optional.empty();
-        }
+        String value = getValue(showId, seatId);
+        if (value == null || value.isEmpty()) return Optional.empty();
+        String userIdStr = value.contains(":") ? value.substring(0, value.indexOf(':')) : value;
         try {
-            return Optional.of(Long.parseLong(value));
+            return Optional.of(Long.parseLong(userIdStr));
         } catch (NumberFormatException e) {
-            log.warn("Invalid lock value in Redis, expected numeric user id: key={}, value={}", key, value, e);
+            log.warn("Invalid lock value: key={}, value={}", key(showId, seatId), value, e);
             return Optional.empty();
         }
     }
 
-    /**
-     * Returns true if the seat is locked by the given user.
-     */
     public boolean isLockedBy(Long showId, Long seatId, Long userId) {
         return getLockOwner(showId, seatId).filter(owner -> owner.equals(userId)).isPresent();
     }
 
     /**
-     * Sets seat lock only if key does not exist (atomic). Value stored is user_id (plain).
-     * @return true if lock was set, false if key already existed
+     * Set lock only if key does not exist. Value = user_id. TTL 10 min.
+     * If key exists do not proceed (return false).
      */
     public boolean setLockIfAbsent(Long showId, Long seatId, Long userId) {
         String value = String.valueOf(userId);
         return Boolean.TRUE.equals(
-                redisTemplate.opsForValue().setIfAbsent(seatLockKey(showId, seatId), value, SEAT_LOCK_TTL));
-    }
-
-    /** Removes the seat lock (e.g. after payment success or failure). */
-    public void removeLock(Long showId, Long seatId) {
-        redisTemplate.delete(seatLockKey(showId, seatId));
+                redisTemplate.opsForValue().setIfAbsent(key(showId, seatId), value, SEAT_LOCK_TTL));
     }
 
     /**
-     * Sets ticket lock by session ID for idempotent webhook handling.
-     * @return true if this request should create the ticket, false if duplicate webhook
+     * Set session_id on the lock. Call only when value is auth user and session_id not already there.
+     * Checks: (1) value must be this user, (2) value must not already contain session_id (no colon).
+     * If either fails returns false (do not proceed). Otherwise sets value to user_id:session_id and resets TTL to 10 min.
      */
-    public boolean setTicketLockIfAbsent(String stripeSessionId) {
-        return Boolean.TRUE.equals(
-                redisTemplate.opsForValue().setIfAbsent(ticketLockKey(stripeSessionId), TICKET_LOCK_VALUE, TICKET_LOCK_TTL));
+    public boolean setPaymentSession(Long showId, Long seatId, Long userId, String sessionId) {
+        String k = key(showId, seatId);
+        String current = redisTemplate.opsForValue().get(k);
+        if (current == null || current.isEmpty()) {
+            log.warn("setPaymentSession: no lock for showId={}, seatId={}", showId, seatId);
+            return false;
+        }
+        String currentUserId = current.contains(":") ? current.substring(0, current.indexOf(':')) : current;
+        if (!String.valueOf(userId).equals(currentUserId)) {
+            log.warn("setPaymentSession: lock held by another user for showId={}, seatId={}", showId, seatId);
+            return false;
+        }
+        if (current.contains(":")) {
+            log.warn("setPaymentSession: session_id already set for showId={}, seatId={}", showId, seatId);
+            return false;
+        }
+        if (sessionId == null || sessionId.isEmpty()) {
+            return false;
+        }
+        String newValue = userId + ":" + sessionId;
+        redisTemplate.opsForValue().set(k, newValue, SEAT_LOCK_TTL);
+        return true;
+    }
+
+    public static final class PaymentSessionData {
+        private final Long userId;
+        private final String sessionId;
+
+        public PaymentSessionData(Long userId, String sessionId) {
+            this.userId = userId;
+            this.sessionId = sessionId;
+        }
+
+        public Long getUserId() { return userId; }
+        public String getSessionId() { return sessionId; }
+    }
+
+    /** Get stored user_id and session_id for (show_id, seat_id). Empty if key missing. */
+    public Optional<PaymentSessionData> getPaymentSessionData(Long showId, Long seatId) {
+        String value = getValue(showId, seatId);
+        if (value == null || value.isEmpty()) return Optional.empty();
+        int colon = value.indexOf(':');
+        try {
+            Long uid = Long.parseLong(colon >= 0 ? value.substring(0, colon) : value);
+            String sid = (colon >= 0 && colon < value.length() - 1) ? value.substring(colon + 1) : null;
+            return Optional.of(new PaymentSessionData(uid, sid));
+        } catch (NumberFormatException e) {
+            log.warn("Invalid payment session value: key={}, value={}", key(showId, seatId), value, e);
+            return Optional.empty();
+        }
+    }
+
+    public void removeLock(Long showId, Long seatId) {
+        redisTemplate.delete(key(showId, seatId));
     }
 }

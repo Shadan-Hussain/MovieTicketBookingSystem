@@ -8,7 +8,6 @@ import {
   adminAddTheatre,
   adminAddHall,
   adminAddMovie,
-  uploadMoviePoster,
   adminAddSeats,
   adminAddShow,
 } from '../api';
@@ -100,16 +99,14 @@ export default function AdminManage() {
       return;
     }
     try {
-      const created = await adminAddMovie(
+      await adminAddMovie(
         form.movie.name,
         totalMins,
         form.movie.description,
-        form.movie.language
+        form.movie.language,
+        posterFile || undefined
       );
-      if (posterFile) {
-        await uploadMoviePoster(created.id, posterFile);
-        setPosterFile(null);
-      }
+      setPosterFile(null);
       setForm((f) => ({ ...f, movie: { name: '', durationHours: '0', durationMinutes: '0', description: '', language: '' } }));
       showSuccess();
       getAdminMovies().then(setMovies).catch(() => {});

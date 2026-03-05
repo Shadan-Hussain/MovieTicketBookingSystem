@@ -43,6 +43,7 @@ import org.springframework.web.context.WebApplicationContext;
 import com.example.MovieTicketBookingSystemBackend.config.AdminRoleFilter;
 import com.example.MovieTicketBookingSystemBackend.config.JwtAuthFilter;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 
@@ -250,9 +251,10 @@ class BackendIntegrationTest {
         req.setDurationMins(durationMins);
         req.setDescription("A mind-bending thriller");
         req.setLanguage("EN");
-        String body = mockMvc.perform(withAdminAuth(post("/admin/movies")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req))))
+        MockMultipartFile moviePart = new MockMultipartFile("movie", "", "application/json",
+                objectMapper.writeValueAsString(req).getBytes(StandardCharsets.UTF_8));
+        String body = mockMvc.perform(multipart("/admin/movies").file(moviePart)
+                        .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").exists())
                 .andReturn().getResponse().getContentAsString();
@@ -491,51 +493,32 @@ class BackendIntegrationTest {
         @Test
         @DisplayName("GET /movies/{movieId}/poster when no poster returns 404")
         void getPosterReturns404WhenNoPoster() throws Exception {
-            mockMvc.perform(get("/movies/{movieId}/poster", movieId))
+            mockMvc.perform(withAuth(get("/movies/{movieId}/poster", movieId)))
                     .andExpect(status().isNotFound());
         }
 
         @Test
-        @DisplayName("POST /admin/movies/{movieId}/poster then GET poster returns 200 with image")
-        void uploadPosterThenGetPosterReturns200() throws Exception {
+        @DisplayName("Add movie with poster then GET poster returns 200 with image")
+        void addMovieWithPosterThenGetPosterReturns200() throws Exception {
+            String name = "MovieWithPoster_" + System.nanoTime();
+            AddMovieRequest req = new AddMovieRequest();
+            req.setName(name);
+            req.setDurationMins(90);
+            req.setDescription("Description");
+            req.setLanguage("EN");
+            MockMultipartFile moviePart = new MockMultipartFile("movie", "", "application/json",
+                    objectMapper.writeValueAsString(req).getBytes(StandardCharsets.UTF_8));
             byte[] jpegBytes = new byte[] { (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00, 0x01, 0x02 };
-            MockMultipartFile file = new MockMultipartFile("file", "poster.jpg", "image/jpeg", jpegBytes);
-            mockMvc.perform(multipart("/admin/movies/" + movieId + "/poster").file(file)
+            MockMultipartFile filePart = new MockMultipartFile("file", "poster.jpg", "image/jpeg", jpegBytes);
+            String body = mockMvc.perform(multipart("/admin/movies").file(moviePart).file(filePart)
                             .header("Authorization", "Bearer " + adminToken))
-                    .andExpect(status().isOk());
-            mockMvc.perform(get("/movies/{movieId}/poster", movieId))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.id").exists())
+                    .andReturn().getResponse().getContentAsString();
+            Long newMovieId = objectMapper.readTree(body).get("id").asLong();
+            mockMvc.perform(withAuth(get("/movies/" + newMovieId + "/poster")))
                     .andExpect(status().isOk())
                     .andExpect(content().bytes(jpegBytes));
-        }
-
-        @Test
-        @DisplayName("POST /admin/movies/{movieId}/poster with empty file returns 400")
-        void uploadPosterEmptyFileReturns400() throws Exception {
-            MockMultipartFile file = new MockMultipartFile("file", "empty.jpg", "image/jpeg", new byte[0]);
-            mockMvc.perform(multipart("/admin/movies/" + movieId + "/poster").file(file)
-                            .header("Authorization", "Bearer " + adminToken))
-                    .andExpect(status().isBadRequest());
-        }
-
-        @Test
-        @DisplayName("POST /admin/movies/{movieId}/poster with wrong content type returns 400")
-        void uploadPosterWrongContentTypeReturns400() throws Exception {
-            MockMultipartFile file = new MockMultipartFile("file", "file.txt", "text/plain", "not an image".getBytes());
-            mockMvc.perform(multipart("/admin/movies/" + movieId + "/poster").file(file)
-                            .header("Authorization", "Bearer " + adminToken))
-                    .andExpect(status().isBadRequest());
-        }
-
-        @Test
-        @DisplayName("POST /admin/movies/{movieId}/poster with file exceeding 2 MB returns 400")
-        void uploadPosterTooLargeReturns400() throws Exception {
-            byte[] large = new byte[2 * 1024 * 1024 + 1];
-            large[0] = (byte) 0xFF;
-            large[1] = (byte) 0xD8;
-            MockMultipartFile file = new MockMultipartFile("file", "large.jpg", "image/jpeg", large);
-            mockMvc.perform(multipart("/admin/movies/" + movieId + "/poster").file(file)
-                            .header("Authorization", "Bearer " + adminToken))
-                    .andExpect(status().isBadRequest());
         }
     }
 
@@ -1101,9 +1084,10 @@ class BackendIntegrationTest {
             req.setName("A Movie");
             req.setDurationMins(120);
             req.setLanguage("EN");
-            mockMvc.perform(withAdminAuth(post("/admin/movies")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req))))
+            MockMultipartFile moviePart = new MockMultipartFile("movie", "", "application/json",
+                    objectMapper.writeValueAsString(req).getBytes(StandardCharsets.UTF_8));
+            mockMvc.perform(multipart("/admin/movies").file(moviePart)
+                            .header("Authorization", "Bearer " + adminToken))
                     .andExpect(status().isBadRequest());
         }
 
@@ -1114,9 +1098,10 @@ class BackendIntegrationTest {
             req.setName("A Movie");
             req.setDurationMins(120);
             req.setDescription("Some description");
-            mockMvc.perform(withAdminAuth(post("/admin/movies")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req))))
+            MockMultipartFile moviePart = new MockMultipartFile("movie", "", "application/json",
+                    objectMapper.writeValueAsString(req).getBytes(StandardCharsets.UTF_8));
+            mockMvc.perform(multipart("/admin/movies").file(moviePart)
+                            .header("Authorization", "Bearer " + adminToken))
                     .andExpect(status().isBadRequest());
         }
 
@@ -1177,13 +1162,13 @@ class BackendIntegrationTest {
             req.setDurationMins(100);
             req.setDescription("Some description");
             req.setLanguage("EN");
-            mockMvc.perform(withAdminAuth(post("/admin/movies")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req))))
+            MockMultipartFile moviePart = new MockMultipartFile("movie", "", "application/json",
+                    objectMapper.writeValueAsString(req).getBytes(StandardCharsets.UTF_8));
+            mockMvc.perform(multipart("/admin/movies").file(moviePart)
+                            .header("Authorization", "Bearer " + adminToken))
                     .andExpect(status().isCreated());
-            mockMvc.perform(withAdminAuth(post("/admin/movies")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req))))
+            mockMvc.perform(multipart("/admin/movies").file(moviePart)
+                            .header("Authorization", "Bearer " + adminToken))
                     .andExpect(status().isBadRequest());
         }
 
