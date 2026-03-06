@@ -1,4 +1,4 @@
-package com.example.MovieTicketBookingSystemBackend.webhook;
+package com.example.MovieTicketBookingSystemBackend.handler;
 
 import com.stripe.model.Event;
 

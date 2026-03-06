@@ -1,4 +1,4 @@
-package com.example.MovieTicketBookingSystemBackend.webhook;
+package com.example.MovieTicketBookingSystemBackend.util;
 
 import com.stripe.model.Event;
 import com.stripe.model.PaymentIntent;

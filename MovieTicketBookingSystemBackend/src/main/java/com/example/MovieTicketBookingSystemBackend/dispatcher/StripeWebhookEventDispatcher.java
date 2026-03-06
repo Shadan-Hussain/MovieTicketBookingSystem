@@ -1,11 +1,12 @@
-package com.example.MovieTicketBookingSystemBackend.webhook;
+package com.example.MovieTicketBookingSystemBackend.dispatcher;
 
+import com.example.MovieTicketBookingSystemBackend.handler.StripeWebhookEventHandler;
 import com.stripe.model.Event;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;

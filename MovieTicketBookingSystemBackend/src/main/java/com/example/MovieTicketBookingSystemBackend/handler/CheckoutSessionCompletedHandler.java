@@ -1,11 +1,11 @@
-package com.example.MovieTicketBookingSystemBackend.webhook;
+package com.example.MovieTicketBookingSystemBackend.handler;
 
 import com.example.MovieTicketBookingSystemBackend.service.StripeService;
+import com.example.MovieTicketBookingSystemBackend.util.StripeWebhookUtils;
 import com.stripe.model.Event;
 import com.stripe.model.checkout.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,7 +16,7 @@ public class CheckoutSessionCompletedHandler implements StripeWebhookEventHandle
 
     private final StripeService stripeService;
 
-    public CheckoutSessionCompletedHandler(@Lazy StripeService stripeService) {
+    public CheckoutSessionCompletedHandler(StripeService stripeService) {
         this.stripeService = stripeService;
     }
 

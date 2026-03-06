@@ -1,7 +1,6 @@
 package com.example.MovieTicketBookingSystemBackend.service;
 
 import com.example.MovieTicketBookingSystemBackend.dto.StripeSessionResponse;
-import com.example.MovieTicketBookingSystemBackend.webhook.StripeWebhookEventDispatcher;
 import com.example.MovieTicketBookingSystemBackend.model.Seat;
 import com.example.MovieTicketBookingSystemBackend.model.ShowSeat;
 import com.example.MovieTicketBookingSystemBackend.model.Ticket;
@@ -13,13 +12,10 @@ import com.example.MovieTicketBookingSystemBackend.repository.TicketRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.TransactionRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.UserRepository;
 import com.stripe.Stripe;
-import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
-import com.stripe.model.Event;
 import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
 import com.stripe.model.checkout.SessionCollection;
-import com.stripe.net.Webhook;
 import com.stripe.param.RefundCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.stripe.param.checkout.SessionListParams;
@@ -30,7 +26,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -45,9 +40,6 @@ public class StripeService {
     @Value("${STRIPE_SECRET_KEY:}")
     private String secretKey;
 
-    @Value("${STRIPE_WEBHOOK_SECRET:}")
-    private String webhookSecret;
-
     @Value("${stripe.successUrl}")
     private String successUrl;
 
@@ -61,7 +53,6 @@ public class StripeService {
     private final ShowSeatRepository showSeatRepository;
     private final TicketRepository ticketRepository;
     private final SeatLockService seatLockService;
-    private final StripeWebhookEventDispatcher eventDispatcher;
 
     public StripeService(SeatRepository seatRepository,
                          ShowRepository showRepository,
@@ -69,8 +60,7 @@ public class StripeService {
                          TransactionRepository transactionRepository,
                          ShowSeatRepository showSeatRepository,
                          TicketRepository ticketRepository,
-                         SeatLockService seatLockService,
-                         StripeWebhookEventDispatcher eventDispatcher) {
+                         SeatLockService seatLockService) {
         this.seatRepository = seatRepository;
         this.showRepository = showRepository;
         this.userRepository = userRepository;
@@ -78,35 +68,6 @@ public class StripeService {
         this.showSeatRepository = showSeatRepository;
         this.ticketRepository = ticketRepository;
         this.seatLockService = seatLockService;
-        this.eventDispatcher = eventDispatcher;
-    }
-
-    // ---------- Webhook entry: verify → parse → validate metadata → handle ----------
-
-    /**
-     * Processes Stripe webhook: verify signature, construct event, validate required metadata, then handle payment success or failure.
-     *
-     * @param rawPayload      raw request body (exactly as received)
-     * @param stripeSignature Stripe-Signature header
-     * @return error message if processing failed (signature invalid, missing metadata, etc.), null if success
-     */
-    public String processWebhook(byte[] rawPayload, String stripeSignature) {
-        if (stripeSignature == null || webhookSecret == null || webhookSecret.isEmpty()) {
-            log.warn("Webhook missing signature or secret");
-            return "Missing signature or config";
-        }
-
-        String payload = new String(rawPayload, StandardCharsets.UTF_8);
-        Event event;
-        try {
-            event = Webhook.constructEvent(payload, stripeSignature, webhookSecret);
-        } catch (SignatureVerificationException e) {
-            log.warn("Webhook signature verification failed: {} (payload length={}). For local dev use the secret from 'stripe listen', not Dashboard.",
-                    e.getMessage(), rawPayload.length, e);
-            return "Invalid signature";
-        }
-
-        return eventDispatcher.dispatch(event);
     }
 
     /** Look up Checkout Session by payment intent id (for payment_intent.payment_failed). Used by PaymentIntentFailedHandler. */
