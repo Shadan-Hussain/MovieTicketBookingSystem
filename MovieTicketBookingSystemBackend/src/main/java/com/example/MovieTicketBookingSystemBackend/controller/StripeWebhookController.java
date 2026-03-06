@@ -1,6 +1,6 @@
 package com.example.MovieTicketBookingSystemBackend.controller;
 
-import com.example.MovieTicketBookingSystemBackend.service.StripeWebhookService;
+import com.example.MovieTicketBookingSystemBackend.service.StripeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -21,10 +21,10 @@ public class StripeWebhookController {
 
     private static final Logger log = LoggerFactory.getLogger(StripeWebhookController.class);
 
-    private final StripeWebhookService stripeWebhookService;
+    private final StripeService stripeService;
 
-    public StripeWebhookController(StripeWebhookService stripeWebhookService) {
-        this.stripeWebhookService = stripeWebhookService;
+    public StripeWebhookController(StripeService stripeService) {
+        this.stripeService = stripeService;
     }
 
     @PostMapping("/stripe")
@@ -33,7 +33,7 @@ public class StripeWebhookController {
         byte[] rawPayload = request.getInputStream().readAllBytes();
         String sigHeader = request.getHeader("Stripe-Signature");
 
-        String error = stripeWebhookService.processWebhook(rawPayload, sigHeader);
+        String error = stripeService.processWebhook(rawPayload, sigHeader);
         if (error != null) {
             log.warn("Stripe webhook rejected: {}", error);
             return ResponseEntity.badRequest().body(error);

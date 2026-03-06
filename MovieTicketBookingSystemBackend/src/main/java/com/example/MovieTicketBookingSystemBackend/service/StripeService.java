@@ -1,6 +1,7 @@
 package com.example.MovieTicketBookingSystemBackend.service;
 
 import com.example.MovieTicketBookingSystemBackend.dto.StripeSessionResponse;
+import com.example.MovieTicketBookingSystemBackend.webhook.StripeWebhookEventDispatcher;
 import com.example.MovieTicketBookingSystemBackend.model.Seat;
 import com.example.MovieTicketBookingSystemBackend.model.ShowSeat;
 import com.example.MovieTicketBookingSystemBackend.model.Ticket;
@@ -12,10 +13,13 @@ import com.example.MovieTicketBookingSystemBackend.repository.TicketRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.TransactionRepository;
 import com.example.MovieTicketBookingSystemBackend.repository.UserRepository;
 import com.stripe.Stripe;
+import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Event;
 import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
 import com.stripe.model.checkout.SessionCollection;
+import com.stripe.net.Webhook;
 import com.stripe.param.RefundCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.stripe.param.checkout.SessionListParams;
@@ -26,12 +30,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;
 
 /**
- * Stripe Checkout sessions and webhook handling for (show_id, seat_id) flow.
- * Creates Transaction PENDING when creating session; on success updates ShowSeat, Transaction, creates Ticket.
+ * Stripe Checkout sessions and webhook handling. Single service: verify webhook, validate metadata, then handle payment success/failure.
  */
 @Service
 public class StripeService {
@@ -40,6 +44,9 @@ public class StripeService {
 
     @Value("${STRIPE_SECRET_KEY:}")
     private String secretKey;
+
+    @Value("${STRIPE_WEBHOOK_SECRET:}")
+    private String webhookSecret;
 
     @Value("${stripe.successUrl}")
     private String successUrl;
@@ -54,6 +61,7 @@ public class StripeService {
     private final ShowSeatRepository showSeatRepository;
     private final TicketRepository ticketRepository;
     private final SeatLockService seatLockService;
+    private final StripeWebhookEventDispatcher eventDispatcher;
 
     public StripeService(SeatRepository seatRepository,
                          ShowRepository showRepository,
@@ -61,7 +69,8 @@ public class StripeService {
                          TransactionRepository transactionRepository,
                          ShowSeatRepository showSeatRepository,
                          TicketRepository ticketRepository,
-                         SeatLockService seatLockService) {
+                         SeatLockService seatLockService,
+                         StripeWebhookEventDispatcher eventDispatcher) {
         this.seatRepository = seatRepository;
         this.showRepository = showRepository;
         this.userRepository = userRepository;
@@ -69,7 +78,57 @@ public class StripeService {
         this.showSeatRepository = showSeatRepository;
         this.ticketRepository = ticketRepository;
         this.seatLockService = seatLockService;
+        this.eventDispatcher = eventDispatcher;
     }
+
+    // ---------- Webhook entry: verify → parse → validate metadata → handle ----------
+
+    /**
+     * Processes Stripe webhook: verify signature, construct event, validate required metadata, then handle payment success or failure.
+     *
+     * @param rawPayload      raw request body (exactly as received)
+     * @param stripeSignature Stripe-Signature header
+     * @return error message if processing failed (signature invalid, missing metadata, etc.), null if success
+     */
+    public String processWebhook(byte[] rawPayload, String stripeSignature) {
+        if (stripeSignature == null || webhookSecret == null || webhookSecret.isEmpty()) {
+            log.warn("Webhook missing signature or secret");
+            return "Missing signature or config";
+        }
+
+        String payload = new String(rawPayload, StandardCharsets.UTF_8);
+        Event event;
+        try {
+            event = Webhook.constructEvent(payload, stripeSignature, webhookSecret);
+        } catch (SignatureVerificationException e) {
+            log.warn("Webhook signature verification failed: {} (payload length={}). For local dev use the secret from 'stripe listen', not Dashboard.",
+                    e.getMessage(), rawPayload.length, e);
+            return "Invalid signature";
+        }
+
+        return eventDispatcher.dispatch(event);
+    }
+
+    /** Look up Checkout Session by payment intent id (for payment_intent.payment_failed). Used by PaymentIntentFailedHandler. */
+    public Session getSessionByPaymentIntentId(String paymentIntentId) {
+        try {
+            Stripe.apiKey = secretKey;
+            SessionListParams params = SessionListParams.builder()
+                    .setPaymentIntent(paymentIntentId)
+                    .setLimit(1L)
+                    .build();
+            SessionCollection sessions = Session.list(params);
+            if (sessions == null || sessions.getData() == null || sessions.getData().isEmpty()) {
+                return null;
+            }
+            return sessions.getData().get(0);
+        } catch (StripeException e) {
+            log.warn("Failed to look up session by payment intent {}", paymentIntentId, e);
+            return null;
+        }
+    }
+
+    // ---------- Checkout session creation ----------
 
     /**
      * Creates a Stripe Checkout Session for (showId, seatId, userId). Does not create or update Transaction.
@@ -130,26 +189,11 @@ public class StripeService {
     }
 
     /**
-     * Webhook: payment_intent.payment_failed. Creates a FAILED transaction using show_id, seat_id, user_id from session metadata.
+     * Webhook: payment_intent.payment_failed. Session and metadata (show_id, seat_id, user_id) already resolved in processWebhook.
      */
     @Transactional
-    public void handlePaymentFailure(String paymentIntentId) {
+    public void handlePaymentFailure(String sessionId, Long showId, Long seatId, Long userId) {
         try {
-            Stripe.apiKey = secretKey;
-            SessionListParams params = SessionListParams.builder()
-                    .setPaymentIntent(paymentIntentId)
-                    .setLimit(1L)
-                    .build();
-            SessionCollection sessions = Session.list(params);
-            if (sessions == null || sessions.getData() == null || sessions.getData().isEmpty()) {
-                log.warn("Payment failure but no checkout session found for paymentIntentId={}", paymentIntentId);
-                return;
-            }
-            Session session = sessions.getData().get(0);
-            String sessionId = session.getId();
-            if (sessionId == null || sessionId.isEmpty()) {
-                return;
-            }
             Optional<Transaction> existing = transactionRepository.findByStripeSessionId(sessionId);
             if (existing.isPresent()) {
                 Transaction txn = existing.get();
@@ -162,30 +206,12 @@ public class StripeService {
                 log.info("Payment failed: transactionId={} marked FAILED", txn.getTransactionId());
                 return;
             }
-            String showIdStr = session.getMetadata() != null ? session.getMetadata().get("show_id") : null;
-            String seatIdStr = session.getMetadata() != null ? session.getMetadata().get("seat_id") : null;
-            String userIdStr = session.getMetadata() != null ? session.getMetadata().get("user_id") : null;
-            if (showIdStr == null || seatIdStr == null || userIdStr == null) {
-                log.warn("Payment failure but session missing metadata for paymentIntentId={}", paymentIntentId);
-                return;
-            }
-            long showId;
-            long seatId;
-            long userId;
-            try {
-                showId = Long.parseLong(showIdStr);
-                seatId = Long.parseLong(seatIdStr);
-                userId = Long.parseLong(userIdStr);
-            } catch (NumberFormatException e) {
-                log.warn("Invalid metadata in session for paymentIntentId={}", paymentIntentId, e);
-                return;
-            }
             Seat seat = seatRepository.findById(seatId).orElse(null);
             long amountRupees = seat != null && seat.getPrice() != null ? seat.getPrice() : 100L;
             Transaction txn = createAndSaveTransaction(showId, seatId, userId, sessionId, amountRupees, Transaction.STATUS_FAILED);
             log.info("Payment failed: created FAILED transactionId={} for sessionId={}", txn.getTransactionId(), sessionId);
         } catch (Exception e) {
-            log.error("handlePaymentFailure failed for paymentIntentId={}", paymentIntentId, e);
+            log.error("handlePaymentFailure failed for sessionId={}", sessionId, e);
         }
     }
 
@@ -243,45 +269,17 @@ public class StripeService {
         RefundRequiredException(String message, Throwable cause) { super(message, cause); }
     }
 
-    private void doRefund(String sessionId) {
-        try {
-            createRefundForCheckoutSession(sessionId);
-        } catch (Exception ex) {
-            log.error("Refund failed for sessionId={}", sessionId, ex);
-        }
-    }
-
     /**
-     * Webhook: checkout.session.completed.
-     * 1) Get show_id, seat_id, user_id from Stripe session metadata.
-     * 2) Check Redis: key must exist, stored session_id must match. If not → refund and return.
-     * 3) Only then: create Transaction, update ShowSeat, create Ticket. Do not remove Redis key.
-     * Any validation failure or booking failure triggers refund in one place.
+     * Webhook: checkout.session.completed. show_id, seat_id, user_id are already validated by the webhook layer.
+     * 1) Idempotency: if transaction already SUCCESS for this sessionId, return.
+     * 2) Redis: key must exist, stored session_id must match; optionally userId must match.
+     * 3) Create Transaction, update ShowSeat, create Ticket.
+     * Any validation failure or booking failure triggers refund.
      */
     @Transactional
-    public void handlePaymentSuccess(String sessionId) {
+    public void handlePaymentSuccess(String sessionId, Long showId, Long seatId, Long userId) {
         try {
             Stripe.apiKey = secretKey;
-            Session session;
-            try {
-                session = Session.retrieve(sessionId);
-            } catch (Exception e) {
-                throw new RefundRequiredException("Failed to retrieve Stripe session for sessionId=" + sessionId, e);
-            }
-
-            String showIdStr = session.getMetadata() != null ? session.getMetadata().get("show_id") : null;
-            String seatIdStr = session.getMetadata() != null ? session.getMetadata().get("seat_id") : null;
-            if (showIdStr == null || seatIdStr == null) {
-                throw new RefundRequiredException("Session missing show_id or seat_id metadata, sessionId=" + sessionId);
-            }
-            long showId;
-            long seatId;
-            try {
-                showId = Long.parseLong(showIdStr);
-                seatId = Long.parseLong(seatIdStr);
-            } catch (NumberFormatException e) {
-                throw new RefundRequiredException("Invalid show_id or seat_id in session metadata, sessionId=" + sessionId);
-            }
 
             Optional<Transaction> existingTxn = transactionRepository.findByStripeSessionId(sessionId);
             if (existingTxn.isPresent() && Transaction.STATUS_SUCCESS.equals(existingTxn.get().getStatus())) {
@@ -296,15 +294,21 @@ public class StripeService {
             if (storedSessionId == null || !storedSessionId.equals(sessionId)) {
                 throw new RefundRequiredException("Session id mismatch for showId=" + showId + ", seatId=" + seatId + ", sessionId=" + sessionId);
             }
+            if (!userId.equals(sessionData.get().getUserId())) {
+                throw new RefundRequiredException("User id mismatch for showId=" + showId + ", seatId=" + seatId + ", sessionId=" + sessionId);
+            }
 
-            Long userId = sessionData.get().getUserId();
             completeBooking(showId, seatId, userId, sessionId);
 
         } catch (DataIntegrityViolationException e) {
             log.error("Duplicate booking (idempotent), sessionId={}", sessionId, e);
         } catch (Exception e) {
             log.error("handlePaymentSuccess failed for sessionId={}, initiating refund", sessionId, e);
-            doRefund(sessionId);
+            try {
+                createRefundForCheckoutSession(sessionId);
+            } catch (Exception ex) {
+                log.error("Refund failed for sessionId={}", sessionId, ex);
+            }
             throw e;
         }
     }

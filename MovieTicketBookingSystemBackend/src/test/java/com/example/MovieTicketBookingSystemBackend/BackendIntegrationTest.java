@@ -21,7 +21,6 @@ import com.example.MovieTicketBookingSystemBackend.repository.TransactionReposit
 import com.example.MovieTicketBookingSystemBackend.repository.UserRepository;
 import com.example.MovieTicketBookingSystemBackend.service.JwtService;
 import com.example.MovieTicketBookingSystemBackend.service.StripeService;
-import com.example.MovieTicketBookingSystemBackend.service.StripeWebhookService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.BeforeAll;
@@ -105,9 +104,6 @@ class BackendIntegrationTest {
 
     @MockitoBean
     private StripeService stripeService;
-
-    @MockitoBean
-    private StripeWebhookService stripeWebhookService;
 
     private Long cityId;
     private Long theatreId;
@@ -902,7 +898,7 @@ class BackendIntegrationTest {
         @Test
         @DisplayName("returns 200 when webhook service accepts payload")
         void webhookSuccess() throws Exception {
-            when(stripeWebhookService.processWebhook(any(byte[].class), any()))
+            when(stripeService.processWebhook(any(byte[].class), any()))
                     .thenReturn(null);
             mockMvc.perform(post("/webhook/stripe")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -914,7 +910,7 @@ class BackendIntegrationTest {
         @Test
         @DisplayName("returns 400 when webhook service rejects payload")
         void webhookRejected() throws Exception {
-            when(stripeWebhookService.processWebhook(any(byte[].class), any()))
+            when(stripeService.processWebhook(any(byte[].class), any()))
                     .thenReturn("Invalid signature");
             mockMvc.perform(post("/webhook/stripe")
                             .contentType(MediaType.APPLICATION_JSON)
