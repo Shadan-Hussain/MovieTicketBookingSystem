@@ -24,6 +24,6 @@ public class CityService {
     }
 
     private CityResponse toResponse(City c) {
-        return new CityResponse(c.getCityId(), c.getName(), c.getStateCode());
+        return new CityResponse(c.getCityId(), c.getName());
     }
 }

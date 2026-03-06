@@ -10,6 +10,8 @@ import java.util.List;
 
 public interface ShowRepository extends JpaRepository<Show, Long> {
 
+    List<Show> findByHall_HallId(Long hallId);
+
     @Query(value = "SELECT s.* FROM show s JOIN hall h ON s.hall_id = h.hall_id JOIN theatre t ON h.theatre_id = t.theatre_id WHERE t.city_id = :cityId AND s.movie_id = :movieId ORDER BY s.start_time", nativeQuery = true)
     List<Show> findByCityIdAndMovieId(@Param("cityId") Long cityId, @Param("movieId") Long movieId);
 

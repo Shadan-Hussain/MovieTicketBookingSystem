@@ -1,5 +1,5 @@
 -- Clear all application data and reset identity sequences.
--- Run this when you want a clean slate; all inserts will then go through the API with DB-generated IDs.
+-- Run when you want a clean slate; inserts will then use DB-generated IDs.
 -- Order: child tables first so foreign keys are satisfied.
 
 TRUNCATE TABLE ticket,

@@ -6,7 +6,6 @@ import com.example.MovieTicketBookingSystemBackend.dto.StripeSessionResponse;
 import com.example.MovieTicketBookingSystemBackend.dto.admin.AddCityRequest;
 import com.example.MovieTicketBookingSystemBackend.dto.admin.AddHallRequest;
 import com.example.MovieTicketBookingSystemBackend.dto.admin.AddMovieRequest;
-import com.example.MovieTicketBookingSystemBackend.dto.admin.AddSeatsRequest;
 import com.example.MovieTicketBookingSystemBackend.dto.admin.AddShowRequest;
 import com.example.MovieTicketBookingSystemBackend.dto.admin.AddTheatreRequest;
 import com.example.MovieTicketBookingSystemBackend.model.Show;
@@ -183,8 +182,7 @@ class BackendIntegrationTest {
         seedMovieName = "Inception" + suffix;
         cityId = createCity(seedCityName);
         theatreId = createTheatre(cityId, "PVR Andheri" + suffix);
-        hallId = createHall(theatreId, "Screen 1" + suffix);
-        createSeats(hallId, 2, 3);
+        hallId = createHallWithSeats(theatreId, "Screen 1" + suffix, 2, 3);
         movieId = createMovie(seedMovieName, 148);
         showId = createShow(movieId, hallId);
         seatId = getFirstSeatIdForShow(showId);
@@ -193,7 +191,6 @@ class BackendIntegrationTest {
     private Long createCity(String name) throws Exception {
         AddCityRequest req = new AddCityRequest();
         req.setName(name);
-        req.setStateCode("MH");
         String body = mockMvc.perform(withAdminAuth(post("/admin/cities")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req))))
@@ -217,10 +214,15 @@ class BackendIntegrationTest {
         return objectMapper.readTree(body).get("id").asLong();
     }
 
-    private Long createHall(Long theatreId, String name) throws Exception {
+    private Long createHallWithSeats(Long theatreId, String name, int rows, int cols) throws Exception {
         AddHallRequest req = new AddHallRequest();
         req.setTheatreId(theatreId);
         req.setName(name);
+        req.setRows(rows);
+        req.setCols(cols);
+        req.setPremiumRowEnd(1);
+        req.setPriceNormal(100L);
+        req.setPricePremium(200L);
         String body = mockMvc.perform(withAdminAuth(post("/admin/halls")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req))))
@@ -228,21 +230,6 @@ class BackendIntegrationTest {
                 .andExpect(jsonPath("$.id").exists())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(body).get("id").asLong();
-    }
-
-    private void createSeats(Long hallId, int rows, int cols) throws Exception {
-        AddSeatsRequest req = new AddSeatsRequest();
-        req.setRows(rows);
-        req.setCols(cols);
-        req.setPremiumRowStart(0);
-        req.setPremiumRowEnd(0);
-        req.setPricePremium(200L);
-        req.setPriceNormal(100L);
-        mockMvc.perform(withAdminAuth(post("/admin/halls/" + hallId + "/seats")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.message").value("Seats added"));
     }
 
     private Long createMovie(String name, int durationMins) throws Exception {
@@ -934,7 +921,6 @@ class BackendIntegrationTest {
         void adminWithoutTokenReturns401() throws Exception {
             AddCityRequest req = new AddCityRequest();
             req.setName("City");
-            req.setStateCode("MH");
             mockMvc.perform(post("/admin/cities")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req)))
@@ -946,7 +932,6 @@ class BackendIntegrationTest {
         void adminWithUserRoleReturns403() throws Exception {
             AddCityRequest req = new AddCityRequest();
             req.setName("City");
-            req.setStateCode("MH");
             mockMvc.perform(withAuth(post("/admin/cities")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req))))
@@ -958,7 +943,6 @@ class BackendIntegrationTest {
         void addCityBlankName() throws Exception {
             AddCityRequest req = new AddCityRequest();
             req.setName("   ");
-            req.setStateCode("MH");
             mockMvc.perform(withAdminAuth(post("/admin/cities")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req))))
@@ -966,14 +950,14 @@ class BackendIntegrationTest {
         }
 
         @Test
-        @DisplayName("POST /admin/cities with missing stateCode returns 400")
-        void addCityMissingStateCode() throws Exception {
+        @DisplayName("POST /admin/cities without JWT returns 401")
+        void addCityWithoutJwtReturns401() throws Exception {
             AddCityRequest req = new AddCityRequest();
             req.setName("Pune");
-            mockMvc.perform(withAdminAuth(post("/admin/cities")
+            mockMvc.perform(post("/admin/cities")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(req))))
-                    .andExpect(status().isBadRequest());
+                            .content(objectMapper.writeValueAsString(req)))
+                    .andExpect(status().isUnauthorized());
         }
 
         @Test
@@ -1010,12 +994,17 @@ class BackendIntegrationTest {
         }
 
         @Test
-        @DisplayName("POST /admin/halls/{hallId}/seats with invalid rows returns 400")
-        void addSeatsInvalidRows() throws Exception {
-            AddSeatsRequest req = new AddSeatsRequest();
+        @DisplayName("POST /admin/halls with invalid rows returns 400")
+        void addHallInvalidRows() throws Exception {
+            AddHallRequest req = new AddHallRequest();
+            req.setTheatreId(theatreId);
+            req.setName("BadHall");
             req.setRows(0);
             req.setCols(5);
-            mockMvc.perform(withAdminAuth(post("/admin/halls/{hallId}/seats", hallId)
+            req.setPremiumRowEnd(0);
+            req.setPriceNormal(100L);
+            req.setPricePremium(200L);
+            mockMvc.perform(withAdminAuth(post("/admin/halls")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req))))
                     .andExpect(status().isBadRequest());
@@ -1110,7 +1099,6 @@ class BackendIntegrationTest {
         void addCityDuplicateName() throws Exception {
             AddCityRequest req = new AddCityRequest();
             req.setName("DupCity");
-            req.setStateCode("MH");
             mockMvc.perform(withAdminAuth(post("/admin/cities")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req))))
@@ -1144,6 +1132,11 @@ class BackendIntegrationTest {
             AddHallRequest req = new AddHallRequest();
             req.setTheatreId(theatreId);
             req.setName("DupHall");
+            req.setRows(2);
+            req.setCols(3);
+            req.setPremiumRowEnd(1);
+            req.setPriceNormal(100L);
+            req.setPricePremium(200L);
             mockMvc.perform(withAdminAuth(post("/admin/halls")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req))))

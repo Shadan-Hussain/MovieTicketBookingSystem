@@ -5,6 +5,7 @@ import java.time.Instant;
 public class TicketResponse {
 
     private Long ticketId;
+    private String userName;
     private Long showId;
     private Long seatId;
     private String seatNumber;
@@ -17,10 +18,11 @@ public class TicketResponse {
     private String showEndTime;
     private Instant createdAt;
 
-    public TicketResponse(Long ticketId, Long showId, Long seatId, String seatNumber, Long transactionId,
+    public TicketResponse(Long ticketId, String userName, Long showId, Long seatId, String seatNumber, Long transactionId,
                           String movieName, String theatreName, String theatreAddress, String hallName,
                           String showStartTime, String showEndTime, Instant createdAt) {
         this.ticketId = ticketId;
+        this.userName = userName;
         this.showId = showId;
         this.seatId = seatId;
         this.seatNumber = seatNumber;
@@ -35,6 +37,7 @@ public class TicketResponse {
     }
 
     public Long getTicketId() { return ticketId; }
+    public String getUserName() { return userName; }
     public String getMovieName() { return movieName; }
     public Long getShowId() { return showId; }
     public Long getSeatId() { return seatId; }

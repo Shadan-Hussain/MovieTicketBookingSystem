@@ -1,5 +1,5 @@
--- Run this once after loading sample data (or any manual inserts with explicit IDs)
--- so that the next app insert gets max(id)+1 and does not hit "duplicate key" errors.
+-- Run after loading sample data (or any manual inserts with explicit IDs)
+-- so the next app insert gets max(id)+1 and does not hit "duplicate key" errors.
 -- Safe to run on empty tables (sequence will be set to 1).
 
 SELECT setval(pg_get_serial_sequence('city', 'city_id'), COALESCE((SELECT MAX(city_id) FROM city), 1));

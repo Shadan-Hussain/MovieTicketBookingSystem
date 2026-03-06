@@ -62,11 +62,10 @@ public class AdminController {
         return ResponseEntity.status(HttpStatus.CREATED).body(adminService.addMovie(request, file));
     }
 
-    @PostMapping("/halls/{hallId}/seats")
-    public ResponseEntity<AddSeatsResponse> addSeats(
-            @PathVariable Long hallId,
-            @Valid @RequestBody AddSeatsRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(adminService.addSeats(hallId, request));
+    @DeleteMapping("/halls/{hallId}")
+    public ResponseEntity<Void> deleteHall(@PathVariable Long hallId) {
+        adminService.deleteHall(hallId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/shows")

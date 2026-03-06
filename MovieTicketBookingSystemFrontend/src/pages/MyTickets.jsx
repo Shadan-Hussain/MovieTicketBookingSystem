@@ -27,6 +27,7 @@ export default function MyTickets() {
           {tickets.map((t) => (
             <li key={t.ticketId} className="ticket-card">
               {t.movieName && <p><strong>Movie:</strong> {t.movieName}</p>}
+              {t.userName && <p><strong>Name:</strong> {t.userName}</p>}
               <p><strong>Ticket ID:</strong> {t.ticketId}</p>
               <p><strong>Show ID:</strong> {t.showId}</p>
               <p><strong>Seat number:</strong> {t.seatNumber ?? t.seatId ?? '—'}</p>

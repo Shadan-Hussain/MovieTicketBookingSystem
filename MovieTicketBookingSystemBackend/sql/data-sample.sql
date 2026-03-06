@@ -2,20 +2,20 @@
 -- Order: city -> theatre -> hall -> movie -> seat -> show -> show_seat -> users
 -- payment_transaction and ticket are created by the app (auto-generated IDs).
 --
--- After running this script, run fix-sequences-postgres.sql so the app's next
+-- After running this script, run fix-sequences.sql so the app's next
 -- insert gets max(id)+1 and does not hit "duplicate key" on city_pkey etc.
 
-INSERT INTO city (city_id, name, state_code, created_at) VALUES
-  (1, 'Mumbai', 'MH', NOW()),
-  (2, 'Delhi', 'DL', NOW());
+INSERT INTO city (city_id, name, created_at) VALUES
+  (1, 'Mumbai', NOW()),
+  (2, 'Delhi', NOW());
 
 INSERT INTO theatre (theatre_id, city_id, name, address, created_at) VALUES
   (1, 1, 'PVR Phoenix', '462, Senapati Bapat Marg, Lower Parel', NOW()),
   (2, 1, 'INOX R City', 'LBS Marg, Ghatkopar West', NOW());
 
-INSERT INTO hall (hall_id, theatre_id, name, capacity, created_at) VALUES
-  (1, 1, 'Screen 1', 100, NOW()),
-  (2, 1, 'Screen 2', 80, NOW());
+INSERT INTO hall (hall_id, theatre_id, name, rows, columns, created_at) VALUES
+  (1, 1, 'Screen 1', 10, 10, NOW()),
+  (2, 1, 'Screen 2', 8, 10, NOW());
 
 INSERT INTO movie (movie_id, name, duration_mins, description, language, release_date, created_at) VALUES
   (1, 'Sample Movie One', 120, 'A sample film for testing.', 'Hindi', '2025-01-15', NOW()),

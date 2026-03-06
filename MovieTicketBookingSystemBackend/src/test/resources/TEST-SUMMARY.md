@@ -167,7 +167,7 @@ These check that invalid admin payloads are rejected.
 | **addCityBlankName** | POST `/admin/cities` with `name: "   "` → **400**. |
 | **addCityNullName** | POST `/admin/cities` with `{}` (no name) → **400**. |
 | **addTheatreMissingCityId** | POST `/admin/theatres` with only `name`, no `cityId` → **400**. |
-| **addSeatsInvalidRows** | POST `/admin/halls/{id}/seats` with `rows: 0` → **400**. |
+| **addHallInvalidRows** | POST `/admin/halls` with `rows: 0` (and other required fields) → **400**. |
 | **addShowMissingFields** | POST `/admin/shows` with `{}` (no movieId, hallId, startTime, endTime) → **400**. |
 | **addShowWithStartTimeInPastReturns400** | POST `/admin/shows` with startTime in the past → **400** "Show start time must be in the future". |
 

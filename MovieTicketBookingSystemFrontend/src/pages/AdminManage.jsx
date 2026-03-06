@@ -8,21 +8,23 @@ import {
   adminAddTheatre,
   adminAddHall,
   adminAddMovie,
-  adminAddSeats,
   adminAddShow,
 } from '../api';
 
+const SECTION_KEYS = ['city', 'theatre', 'hall', 'movie', 'show'];
+const INIT_SECTION_ALERT = Object.fromEntries(SECTION_KEYS.map((k) => [k, null]));
+
 export default function AdminManage() {
-  const [alert, setAlert] = useState(null);
+  const [sectionAlert, setSectionAlert] = useState(INIT_SECTION_ALERT);
   const [cities, setCities] = useState([]);
   const [theatres, setTheatres] = useState([]);
   const [halls, setHalls] = useState([]);
   const [movies, setMovies] = useState([]);
   const [posterFile, setPosterFile] = useState(null);
   const [form, setForm] = useState({
-    city: { name: '', stateCode: '' },
+    city: { name: '' },
     theatre: { cityId: '', name: '', address: '' },
-    hall: { theatreId: '', name: '', rows: '', cols: '', premiumRowStart: '', premiumRowEnd: '', priceNormal: '100', pricePremium: '200' },
+    hall: { theatreId: '', name: '', rows: '', cols: '', premiumRowEnd: '', priceNormal: '100', pricePremium: '200' },
     movie: { name: '', durationHours: '0', durationMinutes: '0', description: '', language: '' },
     show: { movieId: '', hallId: '', startTime: '', endTime: '' },
   });
@@ -34,68 +36,70 @@ export default function AdminManage() {
     getAdminMovies().then(setMovies).catch(() => setMovies([]));
   }, []);
 
-  function showSuccess() {
-    setAlert({ type: 'success', text: 'Insert successful' });
-    setTimeout(() => setAlert(null), 3000);
+  function showSuccess(section) {
+    setSectionAlert((s) => ({ ...s, [section]: { type: 'success', text: 'Insert successful' } }));
+    setTimeout(() => setSectionAlert((s) => ({ ...s, [section]: null })), 3000);
   }
-  function showError(msg) {
-    setAlert({ type: 'error', text: msg });
+  function showError(section, msg) {
+    setSectionAlert((s) => ({ ...s, [section]: { type: 'error', text: msg } }));
+  }
+  function clearSectionAlert(section) {
+    setSectionAlert((s) => ({ ...s, [section]: null }));
   }
 
   async function handleCity(e) {
     e.preventDefault();
-    setAlert(null);
+    clearSectionAlert('city');
     try {
-      await adminAddCity(form.city.name, form.city.stateCode);
-      setForm((f) => ({ ...f, city: { name: '', stateCode: '' } }));
-      showSuccess();
+      await adminAddCity(form.city.name);
+      setForm((f) => ({ ...f, city: { name: '' } }));
+      showSuccess('city');
       getCities().then(setCities).catch(() => {});
     } catch (err) {
-      showError(err.message || 'Invalid entry');
+      showError('city', err.message || 'Invalid entry');
     }
   }
   async function handleTheatre(e) {
     e.preventDefault();
-    setAlert(null);
+    clearSectionAlert('theatre');
     try {
       await adminAddTheatre(Number(form.theatre.cityId), form.theatre.name, form.theatre.address);
       setForm((f) => ({ ...f, theatre: { ...f.theatre, name: '', address: '' } }));
-      showSuccess();
+      showSuccess('theatre');
       getAdminTheatres().then(setTheatres).catch(() => {});
     } catch (err) {
-      showError(err.message || 'Invalid entry');
+      showError('theatre', err.message || 'Invalid entry');
     }
   }
   async function handleHall(e) {
     e.preventDefault();
-    setAlert(null);
+    clearSectionAlert('hall');
     try {
-      const created = await adminAddHall(Number(form.hall.theatreId), form.hall.name);
-      await adminAddSeats(
-        created.id,
+      await adminAddHall(
+        Number(form.hall.theatreId),
+        form.hall.name,
         Number(form.hall.rows),
         Number(form.hall.cols),
-        form.hall.premiumRowStart === '' ? undefined : Number(form.hall.premiumRowStart),
-        form.hall.premiumRowEnd === '' ? undefined : Number(form.hall.premiumRowEnd),
-        form.hall.priceNormal === '' ? undefined : Number(form.hall.priceNormal),
-        form.hall.pricePremium === '' ? undefined : Number(form.hall.pricePremium)
+        Number(form.hall.premiumRowEnd),
+        Number(form.hall.priceNormal),
+        Number(form.hall.pricePremium)
       );
       setForm((f) => ({
         ...f,
-        hall: { ...f.hall, name: '', rows: '', cols: '', premiumRowStart: '', premiumRowEnd: '', priceNormal: '100', pricePremium: '200' },
+        hall: { ...f.hall, name: '', rows: '', cols: '', premiumRowEnd: '', priceNormal: '100', pricePremium: '200' },
       }));
-      showSuccess();
+      showSuccess('hall');
       getAdminHalls().then(setHalls).catch(() => {});
     } catch (err) {
-      showError(err.message || 'Invalid entry');
+      showError('hall', err.message || 'Invalid entry');
     }
   }
   async function handleMovie(e) {
     e.preventDefault();
-    setAlert(null);
+    clearSectionAlert('movie');
     const totalMins = Number(form.movie.durationHours) * 60 + Number(form.movie.durationMinutes);
     if (totalMins <= 0) {
-      showError('Duration must be at least 1 minute');
+      showError('movie', 'Duration must be at least 1 minute');
       return;
     }
     try {
@@ -108,10 +112,10 @@ export default function AdminManage() {
       );
       setPosterFile(null);
       setForm((f) => ({ ...f, movie: { name: '', durationHours: '0', durationMinutes: '0', description: '', language: '' } }));
-      showSuccess();
+      showSuccess('movie');
       getAdminMovies().then(setMovies).catch(() => {});
     } catch (err) {
-      showError(err.message || 'Invalid entry');
+      showError('movie', err.message || 'Invalid entry');
     }
   }
   function toOffsetDateTime(localStr) {
@@ -125,7 +129,7 @@ export default function AdminManage() {
   }
   async function handleShow(e) {
     e.preventDefault();
-    setAlert(null);
+    clearSectionAlert('show');
     try {
       await adminAddShow(
         form.show.movieId,
@@ -134,20 +138,15 @@ export default function AdminManage() {
         toOffsetDateTime(form.show.endTime)
       );
       setForm((f) => ({ ...f, show: { movieId: '', hallId: '', startTime: '', endTime: '' } }));
-      showSuccess();
+      showSuccess('show');
     } catch (err) {
-      showError(err.message || 'Invalid entry');
+      showError('show', err.message || 'Invalid entry');
     }
   }
 
   return (
     <div className="page admin-manage">
       <h1>Manage database</h1>
-      {alert && (
-        <div className={`alert alert-${alert.type}`} role="alert">
-          {alert.text}
-        </div>
-      )}
       <section className="admin-section">
         <h2>Add city</h2>
         <form onSubmit={handleCity}>
@@ -159,15 +158,14 @@ export default function AdminManage() {
               required
             />
           </div>
-          <div className="form-row">
-            <label>State code</label>
-            <input
-              value={form.city.stateCode}
-              onChange={(e) => setForm((f) => ({ ...f, city: { ...f.city, stateCode: e.target.value } }))}
-              required
-            />
+          <div className="form-actions">
+            <button type="submit">Add city</button>
+            {sectionAlert.city && (
+              <span className={`alert alert-${sectionAlert.city.type}`} role="alert">
+                {sectionAlert.city.text}
+              </span>
+            )}
           </div>
-          <button type="submit">Add city</button>
         </form>
       </section>
       <section className="admin-section">
@@ -202,7 +200,14 @@ export default function AdminManage() {
               required
             />
           </div>
-          <button type="submit">Add theatre</button>
+          <div className="form-actions">
+            <button type="submit">Add theatre</button>
+            {sectionAlert.theatre && (
+              <span className={`alert alert-${sectionAlert.theatre.type}`} role="alert">
+                {sectionAlert.theatre.text}
+              </span>
+            )}
+          </div>
         </form>
       </section>
       <section className="admin-section">
@@ -248,42 +253,48 @@ export default function AdminManage() {
             />
           </div>
           <div className="form-row">
-            <label>Premium row start (0-based, optional)</label>
+            <label>Premium row end (1-based, required)</label>
             <input
               type="number"
-              value={form.hall.premiumRowStart}
-              onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, premiumRowStart: e.target.value } }))}
-            />
-          </div>
-          <div className="form-row">
-            <label>Premium row end (optional)</label>
-            <input
-              type="number"
+              min="0"
               value={form.hall.premiumRowEnd}
               onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, premiumRowEnd: e.target.value } }))}
+              required
             />
           </div>
+          <p className="muted" style={{ marginTop: '-10px' }}>
+            0 = no premium rows. Example: 2 = rows 1 and 2 are premium.
+          </p>
           <div className="form-row">
-            <label>Price normal (₹, optional)</label>
+            <label>Price normal (₹, required)</label>
             <input
               type="number"
               min="0"
               placeholder="Rupees"
               value={form.hall.priceNormal}
               onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, priceNormal: e.target.value } }))}
+              required
             />
           </div>
           <div className="form-row">
-            <label>Price premium (₹, optional)</label>
+            <label>Price premium (₹, required)</label>
             <input
               type="number"
               min="0"
               placeholder="Rupees"
               value={form.hall.pricePremium}
               onChange={(e) => setForm((f) => ({ ...f, hall: { ...f.hall, pricePremium: e.target.value } }))}
+              required
             />
           </div>
-          <button type="submit">Add hall</button>
+          <div className="form-actions">
+            <button type="submit">Add hall</button>
+            {sectionAlert.hall && (
+              <span className={`alert alert-${sectionAlert.hall.type}`} role="alert">
+                {sectionAlert.hall.text}
+              </span>
+            )}
+          </div>
         </form>
       </section>
       <section className="admin-section">
@@ -344,7 +355,14 @@ export default function AdminManage() {
             />
           </div>
           {posterFile && <p className="muted">Selected: {posterFile.name}</p>}
-          <button type="submit">Add movie</button>
+          <div className="form-actions">
+            <button type="submit">Add movie</button>
+            {sectionAlert.movie && (
+              <span className={`alert alert-${sectionAlert.movie.type}`} role="alert">
+                {sectionAlert.movie.text}
+              </span>
+            )}
+          </div>
         </form>
       </section>
       <section className="admin-section">
@@ -425,7 +443,14 @@ export default function AdminManage() {
               required
             />
           </div>
-          <button type="submit">Add show</button>
+          <div className="form-actions">
+            <button type="submit">Add show</button>
+            {sectionAlert.show && (
+              <span className={`alert alert-${sectionAlert.show.type}`} role="alert">
+                {sectionAlert.show.text}
+              </span>
+            )}
+          </div>
         </form>
         <p className="muted">Use ISO format for times (e.g. 2025-03-15T18:00). Backend expects OffsetDateTime.</p>
       </section>

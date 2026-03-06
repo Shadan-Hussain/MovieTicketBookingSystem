@@ -66,6 +66,7 @@ public class TicketService {
         Long seatId = txn != null ? txn.getSeatId() : null;
         Show show = txn != null ? txn.getShow() : null;
         Seat seat = txn != null ? txn.getSeat() : null;
+        String userName = txn != null && txn.getUser() != null ? txn.getUser().getName() : null;
         String seatNumber = seat != null ? seat.getNumber() : null;
         Hall hall = show != null ? show.getHall() : null;
         Theatre theatre = hall != null ? hall.getTheatre() : null;
@@ -75,7 +76,7 @@ public class TicketService {
         String hallName = hall != null ? hall.getName() : null;
         String showStartTime = show != null && show.getStartTime() != null ? show.getStartTime().toString() : null;
         String showEndTime = show != null && show.getEndTime() != null ? show.getEndTime().toString() : null;
-        return new TicketResponse(t.getTicketId(), showId, seatId, seatNumber, t.getTransactionId(),
+        return new TicketResponse(t.getTicketId(), userName, showId, seatId, seatNumber, t.getTransactionId(),
                 movieName, theatreName, theatreAddress, hallName, showStartTime, showEndTime, t.getCreatedAt());
     }
 }

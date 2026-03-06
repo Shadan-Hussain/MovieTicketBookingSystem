@@ -16,9 +16,6 @@ public class City {
     @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @Column(name = "state_code", nullable = false)
-    private String stateCode;
-
     @Column(name = "created_at")
     private Instant createdAt;
 
@@ -29,8 +26,6 @@ public class City {
     public void setCityId(Long cityId) { this.cityId = cityId; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    public String getStateCode() { return stateCode; }
-    public void setStateCode(String stateCode) { this.stateCode = stateCode; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 }

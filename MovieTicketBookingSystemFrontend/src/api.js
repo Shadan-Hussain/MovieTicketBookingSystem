@@ -143,11 +143,11 @@ export async function getAdminMovies() {
 }
 
 // Admin APIs
-export async function adminAddCity(name, stateCode) {
+export async function adminAddCity(name) {
   const res = await fetch(`${API_BASE}/admin/cities`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ name, stateCode }),
+    body: JSON.stringify({ name }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -169,17 +169,37 @@ export async function adminAddTheatre(cityId, name, address) {
   return res.json();
 }
 
-export async function adminAddHall(theatreId, name) {
+/** Add hall with seat grid in one request. All fields required. */
+export async function adminAddHall(theatreId, name, rows, cols, premiumRowEnd, priceNormal, pricePremium) {
   const res = await fetch(`${API_BASE}/admin/halls`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ theatreId, name }),
+    body: JSON.stringify({
+      theatreId: Number(theatreId),
+      name,
+      rows: Number(rows),
+      cols: Number(cols),
+      premiumRowEnd: Number(premiumRowEnd),
+      priceNormal: Number(priceNormal),
+      pricePremium: Number(pricePremium),
+    }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.message || data.error || 'Failed');
   }
   return res.json(); // { id: hallId }
+}
+
+export async function adminDeleteHall(hallId) {
+  const res = await fetch(`${API_BASE}/admin/halls/${hallId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || data.error || 'Failed to delete hall');
+  }
 }
 
 /** Add movie with optional poster. Sends multipart: part "movie" (JSON), optional part "file" (poster image). */
@@ -217,26 +237,6 @@ export async function fetchPosterBlobUrl(movieId) {
   if (!res.ok) throw new Error('Poster not found');
   const blob = await res.blob();
   return URL.createObjectURL(blob);
-}
-
-export async function adminAddSeats(hallId, rows, cols, premiumRowStart, premiumRowEnd, priceNormal, pricePremium) {
-  const res = await fetch(`${API_BASE}/admin/halls/${hallId}/seats`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({
-      rows: Number(rows),
-      cols: Number(cols),
-      premiumRowStart: premiumRowStart !== '' ? Number(premiumRowStart) : undefined,
-      premiumRowEnd: premiumRowEnd !== '' ? Number(premiumRowEnd) : undefined,
-      priceNormal: priceNormal !== '' ? Number(priceNormal) : undefined,
-      pricePremium: pricePremium !== '' ? Number(pricePremium) : undefined,
-    }),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || data.error || 'Failed');
-  }
-  return res.json();
 }
 
 export async function adminAddShow(movieId, hallId, startTime, endTime) {

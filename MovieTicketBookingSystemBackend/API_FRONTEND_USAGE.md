@@ -20,9 +20,8 @@ All backend REST APIs and whether the frontend uses them.
 | `/admin/options/movies` | GET | Yes – `getAdminMovies()` |
 | `/admin/cities` | POST | Yes – `adminAddCity()` |
 | `/admin/theatres` | POST | Yes – `adminAddTheatre()` |
-| `/admin/halls` | POST | Yes – `adminAddHall()` |
+| `/admin/halls` | POST | Yes – `adminAddHall()` (single request: hall + seat grid; all fields required) |
 | `/admin/movies` | POST | Yes – `adminAddMovie()` |
-| `/admin/halls/{hallId}/seats` | POST | Yes – `adminAddSeats()` (after add hall) |
 | `/admin/shows` | POST | Yes – `adminAddShow()` |
 | `/webhook/stripe` | POST | No – called by Stripe only |
 | `/redirect/success` | GET | No – Stripe redirects to frontend `/payment/success?...` |

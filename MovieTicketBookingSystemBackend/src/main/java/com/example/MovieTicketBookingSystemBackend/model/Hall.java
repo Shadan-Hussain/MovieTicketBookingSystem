@@ -20,8 +20,11 @@ public class Hall {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "capacity")
-    private Integer capacity;
+    @Column(name = "rows", nullable = false)
+    private Integer rows;
+
+    @Column(name = "columns", nullable = false)
+    private Integer columns;
 
     @Column(name = "created_at")
     private Instant createdAt;
@@ -36,8 +39,10 @@ public class Hall {
     public Long getTheatreId() { return theatre != null ? theatre.getTheatreId() : null; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    public Integer getCapacity() { return capacity; }
-    public void setCapacity(Integer capacity) { this.capacity = capacity; }
+    public Integer getRows() { return rows; }
+    public void setRows(Integer rows) { this.rows = rows; }
+    public Integer getColumns() { return columns; }
+    public void setColumns(Integer columns) { this.columns = columns; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 }

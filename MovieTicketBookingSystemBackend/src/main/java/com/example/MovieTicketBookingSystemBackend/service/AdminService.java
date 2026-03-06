@@ -79,15 +79,11 @@ public class AdminService {
         if (req.getName() == null || req.getName().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name is required");
         }
-        if (req.getStateCode() == null || req.getStateCode().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "State code is required");
-        }
         if (cityRepository.existsByName(req.getName().trim())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "City name already exists");
         }
         City city = new City();
         city.setName(req.getName());
-        city.setStateCode(req.getStateCode());
         city.setCreatedAt(Instant.now());
         return new CreatedResponse(cityRepository.save(city).getCityId());
     }
@@ -113,6 +109,10 @@ public class AdminService {
         return new CreatedResponse(theatreRepository.save(theatre).getTheatreId());
     }
 
+    /**
+     * Creates a hall and its seat grid in one transaction. All request fields are required.
+     * premiumRowEnd is 1-based inclusive (0 = no premium rows).
+     */
     @Transactional
     public CreatedResponse addHall(AddHallRequest req) {
         Theatre theatre = theatreRepository.findById(req.getTheatreId())
@@ -120,12 +120,59 @@ public class AdminService {
         if (req.getName() == null || req.getName().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name is required");
         }
+        if (hallRepository.existsByTheatre_TheatreIdAndName(req.getTheatreId(), req.getName().trim())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hall name already exists in this theatre");
+        }
+        if (req.getRows() == null || req.getCols() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rows and cols are required");
+        }
+        int rows = req.getRows();
+        int cols = req.getCols();
+        if (rows <= 0 || cols <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rows and cols must be positive");
+        }
+        if (req.getPremiumRowEnd() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "premiumRowEnd is required");
+        }
+        if (req.getPriceNormal() == null || req.getPricePremium() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "priceNormal and pricePremium are required");
+        }
+        int premiumRowEnd1 = req.getPremiumRowEnd();
+        if (premiumRowEnd1 < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "premiumRowEnd must be >= 0");
+        }
+        if (premiumRowEnd1 > rows) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "premiumRowEnd must be <= rows");
+        }
+        int premiumEnd0 = premiumRowEnd1 - 1;
+        long pricePremium = req.getPricePremium();
+        long priceNormal = req.getPriceNormal();
+
+        Instant now = Instant.now();
         Hall hall = new Hall();
         hall.setTheatre(theatre);
-        hall.setName(req.getName());
-        hall.setCapacity(null);
-        hall.setCreatedAt(Instant.now());
-        return new CreatedResponse(hallRepository.save(hall).getHallId());
+        hall.setName(req.getName().trim());
+        hall.setRows(rows);
+        hall.setColumns(cols);
+        hall.setCreatedAt(now);
+        hall = hallRepository.save(hall);
+
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                Seat seat = new Seat();
+                seat.setHall(hall);
+                seat.setRowNum(r);
+                seat.setColNum(c);
+                seat.setNumber(seatNumberFromRowCol(r, c));
+                boolean isPremium = (premiumEnd0 >= 0 && r <= premiumEnd0);
+                seat.setType(isPremium ? Seat.TYPE_PREMIUM : Seat.TYPE_NORMAL);
+                seat.setPrice(isPremium ? pricePremium : priceNormal);
+                seat.setCreatedAt(now);
+                seatRepository.save(seat);
+            }
+        }
+
+        return new CreatedResponse(hall.getHallId());
     }
 
     @Transactional
@@ -188,52 +235,23 @@ public class AdminService {
     }
 
     /**
-     * Create a grid of seats for the hall. Rows premiumRowStart..premiumRowEnd (inclusive, 0-based) are PREMIUM.
-     * Seat number: row 0-25 -> A1, A2, ... B1, ...; row 26+ -> R27C1, etc.
-     * Updates hall capacity to the new total seat count.
+     * Deletes a hall and all its seats, shows, and show_seats. Use when addSeats fails after creating a hall to leave no orphan hall.
+     * Fails if the hall has transactions (e.g. paid tickets) referencing its shows/seats.
      */
     @Transactional
-    public AddSeatsResponse addSeats(Long hallId, AddSeatsRequest req) {
+    public void deleteHall(Long hallId) {
         if (!hallRepository.existsById(hallId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hall not found");
         }
-        if (req.getRows() == null || req.getCols() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rows and cols are required");
+        List<Show> shows = showRepository.findByHall_HallId(hallId);
+        for (Show show : shows) {
+            List<ShowSeat> showSeats = showSeatRepository.findByShow_ShowIdOrderBySeat_SeatId(show.getShowId());
+            showSeatRepository.deleteAll(showSeats);
         }
-        int rows = req.getRows();
-        int cols = req.getCols();
-        if (rows <= 0 || cols <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rows and cols must be positive");
-        }
-        int premiumStart = req.getPremiumRowStart() != null ? req.getPremiumRowStart() : -1;
-        int premiumEnd = req.getPremiumRowEnd() != null ? req.getPremiumRowEnd() : -1;
-        long pricePremium = req.getPricePremium() != null ? req.getPricePremium() : 200L;
-        long priceNormal = req.getPriceNormal() != null ? req.getPriceNormal() : 100L;
-
-        Instant now = Instant.now();
-        int count = 0;
-        Hall hallForSeats = hallRepository.findById(hallId).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hall not found"));
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                Seat seat = new Seat();
-                seat.setHall(hallForSeats);
-                seat.setRowNum(r);
-                seat.setColNum(c);
-                seat.setNumber(seatNumberFromRowCol(r, c));
-                boolean isPremium = (r >= premiumStart && r <= premiumEnd);
-                seat.setType(isPremium ? Seat.TYPE_PREMIUM : Seat.TYPE_NORMAL);
-                seat.setPrice(isPremium ? pricePremium : priceNormal);
-                seat.setCreatedAt(now);
-                seatRepository.save(seat);
-                count++;
-            }
-        }
-
-        long existing = seatRepository.findByHall_HallId(hallId).size();
-        hallForSeats.setCapacity((int) existing);
-        hallRepository.save(hallForSeats);
-
-        return new AddSeatsResponse("Seats added");
+        showRepository.deleteAll(shows);
+        List<Seat> seats = seatRepository.findByHall_HallId(hallId);
+        seatRepository.deleteAll(seats);
+        hallRepository.deleteById(hallId);
     }
 
     private static String seatNumberFromRowCol(int row, int col) {

@@ -115,7 +115,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Mumbai\",\n  \"stateCode\": \"MH\"\n}"
+							"raw": "{\n  \"name\": \"Mumbai\"\n}"
 						},
 						"url": "{{baseUrl}}/admin/cities",
 						"description": "Requires user with role ADMIN. Log in as admin (e.g. shadan) first. Returns created city id."
@@ -138,7 +138,7 @@
 					}
 				},
 				{
-					"name": "Add Hall",
+					"name": "Add Hall (with seats)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -147,10 +147,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"theatreId\": 1,\n  \"name\": \"Screen 1\"\n}"
+							"raw": "{\n  \"theatreId\": 1,\n  \"name\": \"Screen 1\",\n  \"rows\": 5,\n  \"cols\": 6,\n  \"premiumRowEnd\": 2,\n  \"priceNormal\": 100,\n  \"pricePremium\": 200\n}"
 						},
 						"url": "{{baseUrl}}/admin/halls",
-						"description": "Replace theatreId with a valid theatre id. Returns hall id."
+						"description": "Single request: creates hall and seat grid. All fields required. theatreId, name, rows, cols, premiumRowEnd (1-based; 0 = no premium), priceNormal, pricePremium. Returns hall id."
 					}
 				},
 				{
@@ -172,19 +172,14 @@
 					}
 				},
 				{
-					"name": "Add Seats",
+					"name": "Delete Hall",
 					"request": {
-						"method": "POST",
+						"method": "DELETE",
 						"header": [
-							{ "key": "Content-Type", "value": "application/json" },
 							{ "key": "Authorization", "value": "Bearer {{token}}" }
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"rows\": 5,\n  \"cols\": 6,\n  \"premiumRowStart\": 0,\n  \"premiumRowEnd\": 1,\n  \"pricePremium\": 200,\n  \"priceNormal\": 100\n}"
-						},
-						"url": "{{baseUrl}}/admin/halls/1/seats",
-						"description": "Replace 1 in path with hall id. Rows/cols define grid; premiumRowStart/End are 0-based inclusive."
+						"url": "{{baseUrl}}/admin/halls/1",
+						"description": "Replace 1 with hall id. Deletes hall and all its seats, shows, and show_seats. Fails if hall has transactions (e.g. paid tickets)."
 					}
 				},
 				{
